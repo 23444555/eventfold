@@ -282,81 +282,117 @@ disabled, 12 concurrent, 221 s, zero errors, 1,227,765 input / 2,491 output toke
 "answer only from the material; if the fact is not there, reply 不知道; ≤20 characters". Arms:
 `nil` (no material at all), `1200/vec`, `2400/vec`, `4800/vec`, `4800/sib25`, `4800/ep`.
 
-The judge is mechanical, not a second model: it strips punctuation, then accepts an answer if it
-contains the reference answer, or the evidence sentence, or a digit-bearing token from the evidence
-(`88k99`, `a1b2c3d`), or an anchor word, or shares ≥0.6 of its character bigrams with the evidence
-after removing filler characters. Abstention is detected first and reported as its own column.
+The judge is mechanical, not a second model: strip punctuation, then accept an answer if it contains
+the reference answer, or the evidence sentence, or a digit-bearing token from the evidence
+(`88k99`, `a1b2c3d`), or matches an anchor — 13 questions have no content in `evidence` at all (the
+field holds a citation like `07:11-30 18:01`) and their real answer lives in `anchors` — or shares
+≥0.55 of its character bigrams with an anchor / ≥0.6 with the evidence after removing filler
+characters. Abstention is detected first and reported as its own column. The first version of this
+judge ignored `anchors` for those pointer-style golds and scored 37.5% where the same answers now score
+46.4%: 55 of 672 verdicts changed when that was fixed, which is a reminder of how much of a mechanical
+benchmark is the ruler.
 
 | arm | material chars | correct | abstained | wrong | accuracy | originals (44) | paraphrases (68) |
 |---|---|---|---|---|---|---|---|
 | nil | 0 | 0/112 | **112** | 0 | 0% | 0% | 0% |
-| 1200/vec | 1,198 | 39 | 33 | 40 | **34.8%** | 63.6% | 16.2% |
-| 2400/vec | 2,398 | 41 | 27 | 44 | 36.6% | 63.6% | 19.1% |
-| 4800/vec | 4,797 | 42 | 25 | 45 | **37.5%** | 63.6% | 20.6% |
-| 4800/sib25 | 4,797 | 41 | 25 | 46 | 36.6% | 61.4% | 20.6% |
-| 4800/ep | 1,970 | 31 | 43 | 38 | **27.7%** | 59.1% | 7.3% |
+| 1200/vec | 1,198 | 49 | 33 | 30 | **43.8%** | 75.0% | 23.5% |
+| 2400/vec | 2,398 | 52 | 27 | 33 | 46.4% | 75.0% | 27.9% |
+| 4800/vec | 4,797 | 52 | 25 | 35 | **46.4%** | 75.0% | 27.9% |
+| 4800/sib25 | 4,797 | 52 | 25 | 35 | 46.4% | 72.7% | 29.4% |
+| 4800/ep | 1,970 | 40 | 43 | 29 | **35.7%** | 70.5% | 13.2% |
 
 Two things fall out immediately.
 
-1. **The recall numbers above overstate usefulness by roughly half.** `4800/vec` puts every needed
-   fact in the block 79.5% of the time and the model answers correctly 37.5% of the time. If the
+1. **The recall numbers above still overstate usefulness by about a third.** `4800/vec` puts every
+   needed fact in the block 79.5% of the time and the model answers correctly 46.4% of the time. If the
    product goal is "the assistant can answer", the honest number for this layer is the second one.
-2. **Four times the context buys 2.7 points.** 1,200 → 4,800 characters moves accuracy 34.8% → 37.5%.
+2. **Four times the context buys 2.6 points.** 1,200 → 4,800 characters moves accuracy 43.8% → 46.4%.
    Past ~1.2k characters the limit is not how much you retrieved. The `nil` row also says the model is
-   not the problem in the obvious way: with no material it abstained 112/112, so it is following the
+   not the problem in the obvious way: with no material it abstained 112/112, so it follows the
    "say 不知道" instruction rather than inventing.
 
-### Where the half is lost
+### Where the rest is lost
 
 Joining per-instance coverage (from the fixed-budget run) with answer verdict:
 
 | arm | all legs present | of those correct | legs missing | of those correct |
 |---|---|---|---|---|
-| 1200/vec | 65 | 34 (52%) | 47 | 5 (11%) |
-| 2400/vec | 78 | 40 (51%) | 34 | 1 (3%) |
-| 4800/vec | 89 | 40 (45%) | 23 | 2 (9%) |
-| 4800/sib25 | 90 | 39 (43%) | 22 | 2 (9%) |
-| 4800/ep | 58 | 28 (48%) | 54 | 3 (6%) |
+| 1200/vec | 65 | 39 (60%) | 47 | 10 (21%) |
+| 2400/vec | 78 | 46 (59%) | 34 | 6 (18%) |
+| 4800/vec | 89 | 48 (54%) | 23 | 4 (17%) |
+| 4800/sib25 | 90 | 48 (53%) | 22 | 4 (18%) |
+| 4800/ep | 58 | 34 (59%) | 54 | 6 (11%) |
 
-Coverage does buy accuracy (52% vs 11% at 1,200 chars) — the pipeline is not decorative. But **even
-when every needed fact is in the block, only 43–52% of questions get answered.** Retrieval explains
-the gap between 9% and 45%; the remaining half is lost after retrieval.
+Coverage buys accuracy (60% vs 21% at 1,200 chars) — the pipeline is not decorative. But **even when
+every needed fact is in the block, only 53–60% of questions get answered**, and 16 of the 89 covered
+instances at 4,800/vec still got 不知道 with the evidence in front of them.
 
-By question type at 4,800/vec: `single 13/27`, `alias 5/18`, `arith 5/9`, `multi 2/9`, `time 3/7`,
-`correction 4/21`. The correction family ("who changed their mind to what") is the worst in the set —
-the material contains the sentence and the model still answers the superseded value. Making the block
-*complete* does not make a contradiction legible; that is a formatting problem, not a recall problem.
+By question type at 4,800/vec: `single 15/27`, `correction 8/21`, `alias 7/18`, `arith 4/9`,
+`multi 3/9`, `time 4/7`, `多跳 5/6`, `时间 0/3`.
 
-### How much of this is the ruler
+### The thing I expected to fix it, and why it does not
 
-Some of the misses are the judge being unfair, and it is worth being explicit about which:
+The obvious story for `correction` ("who changed their mind to what") is that a flat list hides the
+superseded value, so rendering a same-slot timeline — `阈值: 0.2 (11-26) → 0.5 (11-30) ← now` — should
+pay for itself. Three measurements say it does not:
 
-- 58 of the 102 questions have no reference answer, only the source sentence (`evidence`). For time and
-  arithmetic questions that sentence often does not contain the number being asked for — `AT1` asks
-  which day a release was postponed, its "gold" is `原定的版本 v1.8.1 先别发`, and the model's
-  `2026年10月3日` may well be right. Those are counted as wrong here.
-- Abstention is counted as "not answered", not as a safe failure. 16 of 89 fully-covered instances at
-  4,800/vec still got 不知道 with the evidence in front of them.
-- I fixed one class of false negative after seeing it: `老板那封邮件的附件里` vs
-  `就在老板那封邮件的那个附件里` now passes on bigram overlap.
+- **There is almost nothing to render.** In the corpus behind this benchmark (84 events, 838 slot rows),
+  exactly **1 of 84 events has a slot with more than one value over time**, and that one is two
+  different people's names, not a changed value. The changes people actually ask about (a threshold
+  going 0.2 → 0.5) sit in *different episodes* on different days, so a per-episode slot history would
+  not span them.
+- **When the gold sentence is retrieved, correction questions already work**: 7 of 8 covered correction
+  instances at 4,800/vec are answered correctly, and 7 of 8 at 1,200/vec too. The headroom is not in
+  the rendering.
+- **What fails is retrieval, on the paraphrased half**: 13 of 21 correction instances never get the
+  gold sentence into any arm's block.
 
-So read 37.5% as a floor with a ruler that is harsh on exactly the question types this corpus is full
-of, not as a quality ceiling.
+So the `correction` score is largely a retrieval score in disguise, and a timeline renderer would be a
+feature the data cannot pay for. That is worth writing down as a negative result: the episode layer's
+formatting story is not "make contradictions legible" — at least not on this corpus.
 
-### What this means for the layer
+### Is it a retrieval wall, or a packing bug?
 
-The fixed-budget result said structure does not pay for its characters in *recall*. End-to-end makes
-the same call more sharply: `4800/ep` (27.7%) is the weakest arm here, mostly because it abstains more
-(43 vs 25) — its block is 1,970 characters against 4,797, so it is the shortest arm by construction.
+For each instance where the 4,800/vec block is missing a leg, the offline rank of the best fact in that
+leg (bge-m3, 1,067 facts, cosine):
 
-That points the same direction, with one addition: the episode layer's real product is **legibility**.
-Dates on lines, slots rolled up, one episode per paragraph, contradictions ordered by time — the
-correction family is the case that shows what is missing when you only hand over a flat ranked list.
-None of that shows up in a recall metric, and this experiment does not yet show it in accuracy either,
-because the block still hands the model a list of fact strings with a date prefix and hopes for the
-best.
+| offline rank of the missing leg | legs | note |
+|---|---|---|
+| 1–5 | 7 | ranked high and still dropped → packing rule |
+| 6–20 | 6 | same, weaker |
+| 21–50 | 2 | edge of the pool → budget / truncation |
+| 51–200 | 13 | near the practical limit of this retriever |
+| >200 | 15 | retrieval cannot reach it at any sane pool size |
 
+Median rank of a missing leg is **132**. Roughly a third of the misses are not a packing problem at all
+— the retriever never ranks those facts, so no amount of re-formatting or re-ordering helps. (Part of
+the "1–5" row is measurement noise: the leg-present test here matches on a 12-character prefix, which
+can collide with a sibling fact.)
 
+### Hybrid retrieval, same budget
+
+Since the misses are paraphrase misses, the natural next lever is lexical recall on top of the vectors.
+The `hybrid` arm fuses the bge-m3 ranking with a character-bigram BM25 ranking (reciprocal rank fusion,
+k = 60) and fills the same character budget:
+
+| cap | vec coverage | hybrid coverage | vec accuracy | hybrid accuracy |
+|---|---|---|---|---|
+| 1,200 | 58.0% | **60.7%** | 43.8% | — |
+| 2,400 | 69.6% | 68.8% | 46.4% | — |
+| 4,800 | 79.5% | **81.2%** | 45.5% | **45.5%** |
+
+Coverage moves within noise (paired at 4,800: 6 win / 4 lose, p = 0.75; legs-only 7 vs 7, p = 1.0), and
+end to end it is exactly a tie (51/112 both arms, 763,629 input tokens). Adding the lexical arm does not
+recover the paraphrases, which makes sense once you look at what the paraphrases do: they delete the
+names and domain terms, so there is no lexical hook for either retriever to find.
+
+The remaining lever for that is query expansion — embed a hypothetical answer instead of the question —
+not more context, not more structure, and not a better renderer.
+
+## Reproduce
+
+```bash
+python build/archive_build.py --facts your_facts.jsonl --out data/archive.json
 node test/runtime_test.mjs          # structural checks on the bundled example
 ```
 
@@ -379,7 +415,8 @@ those shapes against your own corpus, then check whether every needed fact is in
   text, this layer will look better than it is.
 - **Two rulers, both imperfect.** The sweep measures evidence recall; the end-to-end section measures
   answers against a mechanical judge whose gold is often the source sentence rather than a reference
-  answer. The first is generous (79.5% vs 37.5% on the same arm), the second is harsh on time and
-  arithmetic questions. Trust the ordering, and treat neither number as portable.
+  answer. The first is generous (79.5% vs 46.4% on the same arm), the second is harsh on time and
+  arithmetic questions and moved 55 verdicts the day I fixed its anchor handling. Trust the ordering,
+  and treat neither number as portable.
 - And "same budget" is measured in characters of the rendered block, which favours prose over fact
   lists: a flat list of 153 facts spends more tokens than a 5,000-character episode block.

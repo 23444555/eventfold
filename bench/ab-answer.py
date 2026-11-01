@@ -86,12 +86,19 @@ def _jac(a, b):
     return inter / (len(a) + len(b) - inter or 1)
 
 
+PTR = re.compile(r"^\d{1,2}:\d{2}-\d{2}[^ ]*\s+\d{2}:\d{2}")
+
+
+def is_pointer(ev):
+    """`07:11-30 18:01` 这种是出处（文件:日期 时间），不是答案本身。"""
+    return bool(PTR.match(str(ev or "").strip()))
+
+
 def judge(q, answer):
     """返回 'ok' / 'abstain' / 'wrong'。机械判，不调第二个模型。
 
-    金标有两类：44 道原题里 15 道有显式 answer，29 道只有 evidence（原文那一句）。
-    对只有 evidence 的题，判据是「答案是不是 evidence 里那一段」（answer ⊂ evidence）、
-    「evidence 里的关键串（带数字的）在不在答案里」或「anchor 词在不在答案里」。
+    金标有三类：44 道原题里 15 道有显式 answer；29 道只有 evidence（原文那一句）；
+    13 道的 evidence 是「07:11-30 18:01」这种出处指针，真答案在 anchors 里。
     """
     a = norm_text(answer)
     if not a or re.search(r"不知道|无法|没提到|材料中没有|没有相关|信息不足", a):
@@ -108,19 +115,24 @@ def judge(q, answer):
             return "ok"
 
     ev = norm_text(q.get("evidence") or "")
-    if ev and (a in ev or ev in a):
-        return "ok"
-    if ev:
+    if ev and not is_pointer(q.get("evidence")):
+        if a in ev or ev in a:
+            return "ok"
         # 同一句话的轻微改写（「那个附件里」vs「附件里」）也算对
         bg_a, bg_e = _bg(a), _bg(ev)
         if bg_a and bg_e and _jac(bg_a, bg_e) >= 0.6:
             return "ok"
-    for run in re.findall(r"[a-z0-9]{2,}", ev):
-        if any(ch.isdigit() for ch in run) and run in a:
-            return "ok"
+        for run in re.findall(r"[a-z0-9]{2,}", ev):
+            if any(ch.isdigit() for ch in run) and run in a:
+                return "ok"
     for an in q.get("anchors") or []:
         na = norm_text(an)
-        if na and len(na) >= 2 and na in a:
+        if len(na) < 2:
+            continue
+        if a in na or na in a:
+            return "ok"
+        bg_a, bg_n = _bg(a), _bg(na)
+        if bg_a and bg_n and _jac(bg_a, bg_n) >= 0.55:
             return "ok"
     return "wrong"
 
@@ -154,6 +166,46 @@ def call_llm(base, key, model, prompt, timeout=90):
     return {"answer": "", "error": last, "usage": {}, "lat": None}
 
 
+def rejudge(path, qa):
+    """拿已有答案重新判一遍（改判分规则时用，不重调模型、不花 token）。"""
+    d = json.load(open(path, encoding="utf-8"))
+    changed = 0
+    for r in d["rows"]:
+        q = qa.get(r["baseId"], {})
+        v = judge(q, r.get("answer", ""))
+        if v != r["verdict"]:
+            changed += 1
+        r["verdict"] = v
+    summary = {}
+    for a in d["arms"]:
+        rs = [r for r in d["rows"] if r["arm"] == a]
+        n = len(rs)
+        ok = sum(1 for r in rs if r["verdict"] == "ok")
+        ab = sum(1 for r in rs if r["verdict"] == "abstain")
+        base = [r for r in rs if r["kind"] == "base"]
+        var = [r for r in rs if r["kind"] == "variant"]
+        summary[a] = {
+            "n": n, "ok": ok, "abstain": ab, "wrong": n - ok - ab,
+            "acc": round(ok / n, 4) if n else 0,
+            "baseAcc": round(sum(1 for r in base if r["verdict"] == "ok") / len(base), 4) if base else 0,
+            "variantAcc": round(sum(1 for r in var if r["verdict"] == "ok") / len(var), 4) if var else 0,
+            "chars": round(sum(r["chars"] for r in rs) / n) if n else 0,
+            "lat": round(sum(r["lat"] or 0 for r in rs) / n, 2) if n else 0,
+        }
+    d["summary"] = summary
+    d["rejudged"] = changed
+    json.dump(d, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+
+    print(f"## 重新判分（改判 {changed} 条）\n")
+    print("| 臂 | 答对 | 沉默 | 答错 | 准确率 | 原问 | 改写 |")
+    print("|---|---|---|---|---|---|---|")
+    for a in d["arms"]:
+        s = summary[a]
+        print(f"| {a} | {s['ok']}/{s['n']} | {s['abstain']} | {s['wrong']} "
+              f"| {100*s['acc']:.1f}% | {100*s['baseAcc']:.1f}% | {100*s['variantAcc']:.1f}% |")
+    return d
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gen", default=os.path.join(HERE, "ab-gen.json"))
@@ -165,7 +217,15 @@ def main():
     ap.add_argument("--conc", type=int, default=10)
     ap.add_argument("--limit", type=int, default=0, help="每个臂只跑前 N 个实例（冒烟用）")
     ap.add_argument("--arms", default="nil,1200/vec,2400/vec,4800/vec,4800/sib25,4800/ep")
+    ap.add_argument("--rejudge", action="store_true", help="重判 --out 里已有的答案，不调模型")
     args = ap.parse_args()
+
+    qa_all = {}
+    for x in json.load(open(args.qa, encoding="utf-8"))["questions"]:
+        qa_all[x["id"]] = x
+    if args.rejudge:
+        rejudge(args.out, qa_all)
+        return
 
     cfg = load_cfg()
     key = cfg["HINDSIGHT_API_LLM_API_KEY"]

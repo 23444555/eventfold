@@ -161,9 +161,10 @@ Read this before you trust the numbers.
   (dates, slots, per-episode grouping) instead of choosing them.
 - **Asked to answer, the numbers halve.** The same six arms were handed to a model end to end
   (112 × 6 requests, `deepseek-flash`, thinking disabled): `nil` abstains 112/112, `1200/vec` answers
-  **34.8%**, `4800/vec` **37.5%**, `4800/ep` **27.7%**. Recall says 79.5% for that arm, answers say
-  37.5%, and four times the context buys 2.7 points. Even with **every** needed fact in the block only
-  43–52% come out right; retrieval explains the 9% → 45% climb, the other half is lost after retrieval.
+  **43.8%**, `4800/vec` **46.4%**, `4800/ep` **35.7%**. Recall says 79.5% for that arm, answers say
+  46.4%, and four times the context buys 2.6 points. Even with **every** needed fact in the block only
+  53–60% come out right; retrieval explains the 21% → 60% climb, the rest is lost after retrieval.
+  Adding a BM25 arm (hybrid) is a tie at both levels.
 - The A/B is mechanical (does the block contain every fact the answer needs) — it measures evidence
   recall, not answer quality — and is reproducible with `node bench/ab-gen.mjs` +
   `python bench/ab-arms.py` + `python bench/ab-cap.py` + `python bench/ab-answer.py`.

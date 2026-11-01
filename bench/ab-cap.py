@@ -73,7 +73,7 @@ def fill_events(hit_events, event_facts, line_of, keep, keys, cap, used):
     return used
 
 
-def build_arms(vec_ranked, line_of, ep_lines, hit_events, event_facts, cap, reserves):
+def build_arms(vec_ranked, line_of, ep_lines, hit_events, event_facts, cap, reserves, hyb_order=None):
     order = [fid for fid, _s in vec_ranked]
     out = {}
 
@@ -81,6 +81,12 @@ def build_arms(vec_ranked, line_of, ep_lines, hit_events, event_facts, cap, rese
     keep, keys, used = [], [], 0
     fill_facts(order, line_of, keep, keys, cap, used)
     out["vec"] = keep
+
+    # hybrid：向量 + BM25 做 RRF 融合，同预算填（看词面能不能补上改写的漏）
+    if hyb_order:
+        keep, keys, used = [], [], 0
+        fill_facts(hyb_order, line_of, keep, keys, cap, used)
+        out["hybrid"] = keep
 
     # ep：档案块自身顺序截断到 B
     keep, keys, used = [], [], 0
@@ -120,7 +126,7 @@ def main():
     args = ap.parse_args()
     caps = [int(c) for c in args.caps.split(",") if c.strip()]
     reserves = [float(r) for r in args.reserves.split(",") if r.strip()]
-    arms = ["vec", "ep", "structFirst"] + [f"sib{int(round(r * 100))}" for r in reserves]
+    arms = ["vec", "hybrid", "ep", "structFirst"] + [f"sib{int(round(r * 100))}" for r in reserves]
 
     d = json.load(open(args.gen, encoding="utf-8"))
     inst, corpus = d["instances"], d["corpus"]
@@ -151,11 +157,22 @@ def main():
                   convert_to_numpy=True, show_progress_bar=False)
     sims = (Q @ C.T).astype(np.float32)
 
+    # 词面臂：字符 bigram BM25（与 ab-arms.py 同一个实现），用 RRF 和向量融合
+    ids = [f["i"] for f in corpus]
+    bm = A.BM25([f["t"] for f in corpus])
+    rrf_k = 60
+
     rows = {c: {a: [] for a in arms} for c in caps}
     blocks = {}   # cap -> arm -> iid -> [lines]，留给「让模型真答一遍」的实验用
     for k, x in enumerate(inst):
         order = np.argsort(-sims[k])[: args.pool]
         vec_ranked = [(corpus[i]["i"], float(sims[k][i])) for i in order]
+        bs = bm.score(x["q"])
+        b_order = np.argsort(-bs)[: args.pool]
+        vr = {ids[i]: r for r, i in enumerate(order)}
+        br = {ids[int(i)]: r for r, i in enumerate(b_order)}
+        fused = sorted(vr, key=lambda fid: -(1.0 / (rrf_k + vr[fid] + 1) + 1.0 / (rrf_k + br.get(fid, 10 ** 6) + 1)))
+        hyb_order = fused
         hit_events = []
         for i in order[: args.seed_topk]:
             ev = fact2ev.get(int(corpus[i]["i"]))
@@ -163,7 +180,7 @@ def main():
                 hit_events.append(ev)
         ep_lines = [norm(t) for t in x["episode"]]
         for cap in caps:
-            picked = build_arms(vec_ranked, line_of, ep_lines, hit_events, event_facts, cap, reserves)
+            picked = build_arms(vec_ranked, line_of, ep_lines, hit_events, event_facts, cap, reserves, hyb_order)
             for name, lines in picked.items():
                 blocks.setdefault(str(cap), {}).setdefault(name, {})[x["iid"]] = lines
                 s, nr, missing = score(x["legs"], lines, text_of)
