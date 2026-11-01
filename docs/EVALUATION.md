@@ -262,15 +262,101 @@ Reproduce:
 node bench/ab-gen.mjs                    # 112 instances + latency, no GPU needed
 python bench/ab-arms.py                  # the 12 arms (needs torch + bge-m3 + bge-reranker-base)
 python bench/ab-cap.py --caps 1200,2400,4800 --reserves 0.25,0.5   # fixed-budget arms
+DEEPSEEK_API_KEY=... python bench/ab-answer.py --conc 12   # end-to-end answering (optional)
 ```
 
 Both write JSON (`bench/ab-gen.json`, `bench/ab-result-v3.json`). The 15-question three-arm script
 (`bench/ab-coverage.mjs`) is kept for a quicker check; treat it as a subset, not a separate result.
 
-## Reproduce
+The answering run needs `DEEPSEEK_API_KEY` (or `--key`) and writes `bench/ab-answer-result.json`.
+`bench/ab-answer-join.py` cross-tabulates it against the fixed-budget coverage numbers. Nothing in the
+build or runtime path calls a model; this is evaluation only.
 
-```bash
-python build/archive_build.py --facts your_facts.jsonl --out data/archive.json
+## End to end: does the model actually answer? (112 instances, 6 arms)
+
+Everything above scores *whether the needed fact made it into the block*. That is a proxy, and it is a
+generous one. This section closes the loop: hand each arm's block to a model and see if it answers.
+
+**Setup.** 112 instances × 6 arms = 672 requests to `deepseek-flash`, `temperature=0`, thinking
+disabled, 12 concurrent, 221 s, zero errors, 1,227,765 input / 2,491 output tokens. The prompt is
+"answer only from the material; if the fact is not there, reply 不知道; ≤20 characters". Arms:
+`nil` (no material at all), `1200/vec`, `2400/vec`, `4800/vec`, `4800/sib25`, `4800/ep`.
+
+The judge is mechanical, not a second model: it strips punctuation, then accepts an answer if it
+contains the reference answer, or the evidence sentence, or a digit-bearing token from the evidence
+(`88k99`, `a1b2c3d`), or an anchor word, or shares ≥0.6 of its character bigrams with the evidence
+after removing filler characters. Abstention is detected first and reported as its own column.
+
+| arm | material chars | correct | abstained | wrong | accuracy | originals (44) | paraphrases (68) |
+|---|---|---|---|---|---|---|---|
+| nil | 0 | 0/112 | **112** | 0 | 0% | 0% | 0% |
+| 1200/vec | 1,198 | 39 | 33 | 40 | **34.8%** | 63.6% | 16.2% |
+| 2400/vec | 2,398 | 41 | 27 | 44 | 36.6% | 63.6% | 19.1% |
+| 4800/vec | 4,797 | 42 | 25 | 45 | **37.5%** | 63.6% | 20.6% |
+| 4800/sib25 | 4,797 | 41 | 25 | 46 | 36.6% | 61.4% | 20.6% |
+| 4800/ep | 1,970 | 31 | 43 | 38 | **27.7%** | 59.1% | 7.3% |
+
+Two things fall out immediately.
+
+1. **The recall numbers above overstate usefulness by roughly half.** `4800/vec` puts every needed
+   fact in the block 79.5% of the time and the model answers correctly 37.5% of the time. If the
+   product goal is "the assistant can answer", the honest number for this layer is the second one.
+2. **Four times the context buys 2.7 points.** 1,200 → 4,800 characters moves accuracy 34.8% → 37.5%.
+   Past ~1.2k characters the limit is not how much you retrieved. The `nil` row also says the model is
+   not the problem in the obvious way: with no material it abstained 112/112, so it is following the
+   "say 不知道" instruction rather than inventing.
+
+### Where the half is lost
+
+Joining per-instance coverage (from the fixed-budget run) with answer verdict:
+
+| arm | all legs present | of those correct | legs missing | of those correct |
+|---|---|---|---|---|
+| 1200/vec | 65 | 34 (52%) | 47 | 5 (11%) |
+| 2400/vec | 78 | 40 (51%) | 34 | 1 (3%) |
+| 4800/vec | 89 | 40 (45%) | 23 | 2 (9%) |
+| 4800/sib25 | 90 | 39 (43%) | 22 | 2 (9%) |
+| 4800/ep | 58 | 28 (48%) | 54 | 3 (6%) |
+
+Coverage does buy accuracy (52% vs 11% at 1,200 chars) — the pipeline is not decorative. But **even
+when every needed fact is in the block, only 43–52% of questions get answered.** Retrieval explains
+the gap between 9% and 45%; the remaining half is lost after retrieval.
+
+By question type at 4,800/vec: `single 13/27`, `alias 5/18`, `arith 5/9`, `multi 2/9`, `time 3/7`,
+`correction 4/21`. The correction family ("who changed their mind to what") is the worst in the set —
+the material contains the sentence and the model still answers the superseded value. Making the block
+*complete* does not make a contradiction legible; that is a formatting problem, not a recall problem.
+
+### How much of this is the ruler
+
+Some of the misses are the judge being unfair, and it is worth being explicit about which:
+
+- 58 of the 102 questions have no reference answer, only the source sentence (`evidence`). For time and
+  arithmetic questions that sentence often does not contain the number being asked for — `AT1` asks
+  which day a release was postponed, its "gold" is `原定的版本 v1.8.1 先别发`, and the model's
+  `2026年10月3日` may well be right. Those are counted as wrong here.
+- Abstention is counted as "not answered", not as a safe failure. 16 of 89 fully-covered instances at
+  4,800/vec still got 不知道 with the evidence in front of them.
+- I fixed one class of false negative after seeing it: `老板那封邮件的附件里` vs
+  `就在老板那封邮件的那个附件里` now passes on bigram overlap.
+
+So read 37.5% as a floor with a ruler that is harsh on exactly the question types this corpus is full
+of, not as a quality ceiling.
+
+### What this means for the layer
+
+The fixed-budget result said structure does not pay for its characters in *recall*. End-to-end makes
+the same call more sharply: `4800/ep` (27.7%) is the weakest arm here, mostly because it abstains more
+(43 vs 25) — its block is 1,970 characters against 4,797, so it is the shortest arm by construction.
+
+That points the same direction, with one addition: the episode layer's real product is **legibility**.
+Dates on lines, slots rolled up, one episode per paragraph, contradictions ordered by time — the
+correction family is the case that shows what is missing when you only hand over a flat ranked list.
+None of that shows up in a recall metric, and this experiment does not yet show it in accuracy either,
+because the block still hands the model a list of fact strings with a date prefix and hopes for the
+best.
+
+
 node test/runtime_test.mjs          # structural checks on the bundled example
 ```
 
@@ -291,6 +377,9 @@ those shapes against your own corpus, then check whether every needed fact is in
 - **The paraphrase set is the important part.** The 68 rewritten variants are what expose the lexical
   routing (33.8% vs 63.2%). If you only ever test questions asked in the same words as the stored
   text, this layer will look better than it is.
-- **The judge measures evidence recall, not answers.** And "same budget" is measured in characters of
-  the rendered block, which favours prose over fact lists: a flat list of 153 facts spends more
-  tokens than a 5,000-character episode block.
+- **Two rulers, both imperfect.** The sweep measures evidence recall; the end-to-end section measures
+  answers against a mechanical judge whose gold is often the source sentence rather than a reference
+  answer. The first is generous (79.5% vs 37.5% on the same arm), the second is harsh on time and
+  arithmetic questions. Trust the ordering, and treat neither number as portable.
+- And "same budget" is measured in characters of the rendered block, which favours prose over fact
+  lists: a flat list of 153 facts spends more tokens than a 5,000-character episode block.

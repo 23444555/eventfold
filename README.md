@@ -159,9 +159,14 @@ Read this before you trust the numbers.
   it is not yet good enough to ship as the default.
 - So the recommended split is: **vector retrieval picks the facts; the episode layer formats them**
   (dates, slots, per-episode grouping) instead of choosing them.
+- **Asked to answer, the numbers halve.** The same six arms were handed to a model end to end
+  (112 × 6 requests, `deepseek-flash`, thinking disabled): `nil` abstains 112/112, `1200/vec` answers
+  **34.8%**, `4800/vec` **37.5%**, `4800/ep` **27.7%**. Recall says 79.5% for that arm, answers say
+  37.5%, and four times the context buys 2.7 points. Even with **every** needed fact in the block only
+  43–52% come out right; retrieval explains the 9% → 45% climb, the other half is lost after retrieval.
 - The A/B is mechanical (does the block contain every fact the answer needs) — it measures evidence
   recall, not answer quality — and is reproducible with `node bench/ab-gen.mjs` +
-  `python bench/ab-arms.py` + `python bench/ab-cap.py`.
+  `python bench/ab-arms.py` + `python bench/ab-cap.py` + `python bench/ab-answer.py`.
 - The honest framing: this is a **reference implementation** of the episode layer. The mechanics
   are sound and tested; the win rate on your data is unknown until you measure it.
 - The builder currently reads a JSONL fact stream. It does not talk to any specific memory backend —

@@ -1,8 +1,9 @@
-﻿node_modules/
+node_modules/
 tmp/
 *.log
 .DS_Store
 bench/_seed-*.json
 bench/_gate-blocks.json
+bench/ab-cap-blocks.json
 __pycache__/
 *.pyc

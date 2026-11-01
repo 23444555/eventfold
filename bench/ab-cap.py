@@ -109,6 +109,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gen", default=os.path.join(HERE, "ab-gen.json"))
     ap.add_argument("--out", default=os.path.join(HERE, "ab-cap-result.json"))
+    ap.add_argument("--blocks-out", default=os.path.join(HERE, "ab-cap-blocks.json"),
+                    help="每个（上限, 臂, 实例）选中的行，给答题实验直接用")
     ap.add_argument("--archive", default=os.path.join(HERE, "..", "..", "p0-archive", "archive.json"))
     ap.add_argument("--caps", default="1200,2400,4800", help="字数上限，逗号分隔")
     ap.add_argument("--reserves", default="0.25,0.5", help="给结构留的比例，逗号分隔")
@@ -150,6 +152,7 @@ def main():
     sims = (Q @ C.T).astype(np.float32)
 
     rows = {c: {a: [] for a in arms} for c in caps}
+    blocks = {}   # cap -> arm -> iid -> [lines]，留给「让模型真答一遍」的实验用
     for k, x in enumerate(inst):
         order = np.argsort(-sims[k])[: args.pool]
         vec_ranked = [(corpus[i]["i"], float(sims[k][i])) for i in order]
@@ -162,6 +165,7 @@ def main():
         for cap in caps:
             picked = build_arms(vec_ranked, line_of, ep_lines, hit_events, event_facts, cap, reserves)
             for name, lines in picked.items():
+                blocks.setdefault(str(cap), {}).setdefault(name, {})[x["iid"]] = lines
                 s, nr, missing = score(x["legs"], lines, text_of)
                 rows[cap][name].append({
                     "iid": x["iid"], "baseId": x["baseId"], "kind": x["kind"],
@@ -198,6 +202,8 @@ def main():
         res.setdefault("perQuery", {})[str(cap)] = rows[cap]
 
     json.dump(res, open(args.out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    json.dump(blocks, open(args.blocks_out, "w", encoding="utf-8"), ensure_ascii=False)
+    print(f"块写出 {args.blocks_out}")
 
     n = len(inst)
     total_legs = sum(len(x["legs"]) for x in inst)
