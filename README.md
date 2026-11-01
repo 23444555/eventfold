@@ -134,13 +134,22 @@ Read this before you trust the numbers.
 - **It has not run on real conversation data yet.** The evaluation in
   [docs/EVALUATION.md](docs/EVALUATION.md) uses a **synthetic** corpus (a fictional homelab
   operator: 1,067 facts → 58 episodes). It is a reproducible benchmark, not field evidence.
-- On that corpus, 15 multi-part questions scored **14/15 strict, 15/15 lenient** (lenient = the
-  episode holding the answer was retrieved, even if the exact fact was not the first line).
-- Against a flat-recall baseline given **the same character budget**, the same questions score
-  **9/15 strict, 11/15 lenient**; a bare 8-fact return scores 5/15. The arms disagree on 5 questions
-  and all 5 go to the episode layer — but n=15, p ≈ 0.06, so read that as a direction, not a
-  result. The A/B is mechanical (does the block contain every fact the answer needs) and
-  reproducible with `bench/ab-coverage.mjs` — see [docs/EVALUATION.md](docs/EVALUATION.md).
+- On that corpus, **112 question instances** (44 originally-phrased + 68 paraphrased, where the
+  paraphrase strips the names and domain terms) were run through **9 arms** at the same per-question
+  character budget. Full results: [docs/EVALUATION.md](docs/EVALUATION.md).
+- The episode block scores **56.2%** full evidence coverage overall — **90.9% on the original
+  phrasing** (best single arm, beating a same-budget flat recall at 75.0%, p = 0.035) but **33.8% on
+  paraphrases**. A plain vector arm (bge-m3) scores **67.9%** overall, 55.9% on paraphrases. Against
+  BM25 the episode block is a **tie** (55.4% vs 56.2%, p = 1.0).
+- **Putting the episode block *and* the vector arm in context scores 81.2%** (100% original, 69.1%
+  paraphrased, 28/0 against the shipped arm, p < 0.0001) for ~1.5× the tokens. That is the honest
+  headline: the structured layer is sharp, the vector arm is robust, neither wins alone.
+- The routing is therefore **lexical**, and that is a known limitation: strip the wording and the
+  layer loses half its advantage. The obvious next step (vector seeds for the router) is described in
+  [docs/EVALUATION.md](docs/EVALUATION.md) and not yet implemented.
+- The A/B is mechanical (does the block contain every fact the answer needs) — it measures evidence
+  recall, not answer quality — and is reproducible with `node bench/ab-gen.mjs` +
+  `python bench/ab-arms.py`.
 - The honest framing: this is a **reference implementation** of the episode layer. The mechanics
   are sound and tested; the win rate on your data is unknown until you measure it.
 - The builder currently reads a JSONL fact stream. It does not talk to any specific memory backend —
