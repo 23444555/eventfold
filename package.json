@@ -21,10 +21,15 @@
   "scripts": {
     "build:example": "python build/archive_build.py --facts examples/facts.jsonl --out examples/data/archive.json",
     "bench": "node bench/ab-coverage.mjs --out bench/ab-result.json",
+    "bench:variants": "python bench/gen-variants.py --per 5 --keep 3 --temp 1.05",
     "bench:gen": "node bench/ab-gen.mjs",
+    "bench:gen:v4": "node bench/ab-gen.mjs --variants bench/variants-v4.json --out bench/ab-gen-v4.json",
     "bench:arms": "python bench/ab-arms.py",
     "bench:cap": "python bench/ab-cap.py --caps 1200,2400,4800 --reserves 0.25,0.5 --out bench/ab-cap-result.json",
+    "bench:cap:v4": "python bench/ab-cap.py --gen bench/ab-gen-v4.json --out bench/ab-cap-v4.json --blocks-out bench/ab-cap-blocks-v4.json",
     "bench:answer": "python bench/ab-answer.py --out bench/ab-answer-result.json",
+    "bench:answer:v4": "python bench/ab-answer.py --gen bench/ab-gen-v4.json --blocks bench/ab-cap-blocks-v4.json --out bench/ab-answer-v4.json --arms 1200/vec,4800/vec,4800/hybrid,4800/sib25,4800/ep",
+    "bench:judge": "python bench/ab-rejudge-llm.py",
     "test": "node test/runtime_test.mjs && python test/build_test.py",
     "test:runtime": "node test/runtime_test.mjs",
     "test:build": "python test/build_test.py"

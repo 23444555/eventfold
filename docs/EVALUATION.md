@@ -3,6 +3,13 @@
 **Read the limits first.** This is a small, single-author benchmark on a synthetic corpus. It shows
 that the mechanism works on questions of a particular shape; it is not evidence about your data.
 
+> **Update (v4 dataset).** The paraphrase set shipped in v3 was broken: a quarter of the "rewrites"
+> asked a different question and were still scored against the original gold (see *Are the rewrites
+> even the same question?*). I regenerated it with a stricter contract — same answer or discard,
+> 5 candidates per question, 91% pass rate — and re-ran everything. **The v4 numbers in *Clean
+> paraphrase set (v4)* are the ones to quote**; the earlier arm tables are kept because they show
+> how much a bad paraphrase generator moves the answer.
+
 ## Corpus
 
 A fictional homelab operator ("老周") maintaining a home network, a backup array, a rack, a UPS and a
@@ -435,6 +442,66 @@ rankings over the same 1,067 facts:
 Real but small: +7 points at top-20, and it does not touch the deep tail (a third of the missing
 legs rank past 200 either way). One extra model call per query on the hot path is not worth seven
 points at this size.
+
+## Clean paraphrase set (v4): what actually survives
+
+Regenerated with `bench/gen-variants.py`: 5 candidates per base question at temperature 1.05, each
+one judged by a model against *"can the original answer answer this rewrite, with no extra
+information?"*, kept only on `same`, deduplicated, answer leakage dropped. **220 candidates → 200
+same (91%) → 128 kept after dedup**, covering all 44 base questions (2–3 each). The old set passed
+the same gate only 51% of the time.
+
+172 instances, 244 leg-instances. Same arms, same facts, same budgets.
+
+### Evidence coverage
+
+| cap | vec | hybrid | sib25 | sib50 | structFirst | ep |
+|---|---|---|---|---|---|---|
+| 1,200 | 69.2% | **71.5%** | 66.9% | 63.4% | 52.9% | 40.7% |
+| 2,400 | 76.2% | 77.9% | **77.9%** | 75.6% | 64.0% | 54.7% |
+| 4,800 | 80.8% | 84.9% | **86.0%** | 84.3% | 73.3% | 59.3% |
+
+Pairwise against `vec` at the same cap: 4,800 `sib25` **9 wins, 0 losses, p = 0.0039**; `hybrid`
+10/3, p = 0.092; `structFirst` 10/23, p = 0.035; `ep` 20/57, p = 3e-05. At 1,200 nothing separates
+the vector family (sib25 6/10, p = 0.45), and `ep` is still far behind.
+
+**This reverses one thing I said earlier.** On the broken set, "structure does not pay for its
+characters" was true; on genuine paraphrases, sibling facts from the hit episode add ~5 points of
+coverage at a generous budget and 9/0 in the paired test. What does *not* survive is the other
+half: routing the archive layer on its own (`ep`) is 20–27 points worse than retrieval at every cap.
+
+### Answers
+
+Same five arms handed to the model; a model judge marks `ok` / `partial`, and `ok+partial` is the
+number below.
+
+| arm | material | answers (ok+partial) | original questions | paraphrases |
+|---|---|---|---|---|
+| 1200/vec | 1,198 chars | 61.6% | 75% | 57% |
+| 4800/vec | 4,797 | 63.4% | 75% | 59% |
+| 4800/hybrid | 4,797 | 62.2% | 77% | 57% |
+| 4800/sib25 | 4,798 | 62.2% | 77% | 57% |
+| 4800/ep | 2,153 | **50.6%** | 73% | 43% |
+
+Three things to read off this:
+
+1. **The paraphrase collapse was mostly the dataset.** With rewrites that keep the question, the
+   gap is 75% → 57–59% instead of 75% → 26%. Real, but a fifth of the size the broken set implied.
+2. **Everything except `ep` is the same arm, answerwise.** 61.6 / 63.4 / 62.2 / 62.2 — the same
+   families that differ by 5 points on coverage differ by 2 points here, and the budget that
+   quadruples the context buys 1.8 points. Retrieval improvements are not reaching the answer.
+3. **The answering stage is the wall now.** 63.4% at 4,800 chars, 75% even on original questions
+   with every leg present. That is where the next experiment should go, not into packing.
+
+Reproduce: `python bench/gen-variants.py --per 5 --keep 3 --temp 1.05`, then
+
+```
+node bench/ab-gen.mjs --variants bench/variants-v4.json --out bench/ab-gen-v4.json
+python bench/ab-cap.py --gen bench/ab-gen-v4.json --out bench/ab-cap-v4.json
+python bench/ab-answer.py --gen bench/ab-gen-v4.json --blocks bench/ab-cap-blocks-v4.json \
+    --out bench/ab-answer-v4.json --arms "1200/vec,4800/vec,4800/hybrid,4800/sib25,4800/ep"
+python bench/ab-rejudge-llm.py --in bench/ab-answer-v4.json --out bench/ab-rejudge-v4.json
+```
 
 ## Reproduce
 

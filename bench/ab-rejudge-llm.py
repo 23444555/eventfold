@@ -72,9 +72,10 @@ def main():
     ap.add_argument("--model", default="deepseek-flash")
     ap.add_argument("--conc", type=int, default=12)
     ap.add_argument("--out", default=os.path.join(HERE, "ab-rejudge.json"))
+    ap.add_argument("--in", dest="inp", default=os.path.join(HERE, "ab-answer-result.json"))
     args = ap.parse_args()
 
-    d = json.load(open(os.path.join(HERE, "ab-answer-result.json"), encoding="utf-8"))
+    d = json.load(open(args.inp, encoding="utf-8"))
     rows = [r for r in d["rows"] if r["arm"] != "nil"]
     jobs = []
     for r in rows:

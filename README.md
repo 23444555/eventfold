@@ -134,42 +134,34 @@ Read this before you trust the numbers.
 - **It has not run on real conversation data yet.** The evaluation in
   [docs/EVALUATION.md](docs/EVALUATION.md) uses a **synthetic** corpus (a fictional homelab
   operator: 1,067 facts → 58 episodes). It is a reproducible benchmark, not field evidence.
-- On that corpus, **112 question instances** (44 originally-phrased + 68 paraphrased, where the
-  paraphrase strips the names and domain terms) were run through **12 arms** at the same per-question
-  character budget. Full results: [docs/EVALUATION.md](docs/EVALUATION.md).
-- The episode block scores **56.2%** full evidence coverage — **90.9% on the original phrasing**
-  (beats a same-budget flat recall at 75.0%, p = 0.035) but **33.8% on paraphrases**. A plain vector
-  arm (bge-m3) scores **73.2%** overall and 63.2% on paraphrases, and **beats the episode block
-  significantly** (30 instances won, 11 lost, p = 0.004). Against BM25 the episode block is a **tie**
-  (55.4% vs 56.2%, p = 1.0).
-- Episodes **and** vectors together score **83.9%** (100% original, 73.5% paraphrased) — but the
-  control that matters, vector retrieval filled to the *same* budget, scores **80.4%**: the
-  difference is **not significant** (8/4, p = 0.39). So read that gain as "more context", not as
-  "structure retrieves better"; the union is merely cheaper per point (5,068 chars vs 6,055).
-- **Squeezed into a fixed budget, structure does not pay for its characters.** At a hard cap of
-  1,200 / 2,400 / 4,800 chars, plain vector recall wins or ties every arm that spends part of the
-  budget on structure (best structural arm `sib25`: 57.1 / 70.5 / 80.4% vs 58.0 / 69.6 / 79.5%,
-  all p ≥ 0.5). Letting the episode block be the retriever is significantly worse at every cap
-  (38.4% vs 58.0% at 1.2k, 66.1% vs 79.5% at 4.8k, p = 0.011). The one thing structure buys is
-  exact-wording multi-leg questions (43/44 = 97.7% vs 90.9% at 4.8k), which paraphrases give back.
-- Conclusion, stated plainly: **the layer does not out-retrieve a vector index, and its advantage is
-  lexical** — it renders a better block than a flat list of the same size when the question reuses
-  the stored wording, and it collapses when it does not. A vector-seeded router
-  (`episodeSeed`: 63.4%, paraphrase collapse cut from 57 points to 27) is the shape of the fix, and
-  it is not yet good enough to ship as the default.
-- So the recommended split is: **vector retrieval picks the facts; the episode layer formats them**
-  (dates, slots, per-episode grouping) instead of choosing them.
-- **Asked to answer, the numbers halve.** The same six arms were handed to a model end to end
-  (112 × 6 requests, `deepseek-flash`, thinking disabled): `nil` abstains 112/112, `1200/vec` answers
-  **43.8%**, `4800/vec` **46.4%**, `4800/ep` **35.7%**. Recall says 79.5% for that arm, answers say
-  46.4%, and four times the context buys 2.6 points. Even with **every** needed fact in the block only
-  53–60% come out right; retrieval explains the 21% → 60% climb, the rest is lost after retrieval.
-  Adding a BM25 arm (hybrid) is a tie at both levels. A model judge over the same 560 answers puts it
-  at **50–56%** (ok+partial), and a quarter of the «rewrites» in the set turn out to ask a different
-  question — `docs/EVALUATION.md` has both corrections.
-- The A/B is mechanical (does the block contain every fact the answer needs) — it measures evidence
-  recall, not answer quality — and is reproducible with `node bench/ab-gen.mjs` +
-  `python bench/ab-arms.py` + `python bench/ab-cap.py` + `python bench/ab-answer.py`.
+- On that corpus, **172 question instances** (44 original + 128 paraphrases, regenerated under a
+  strict *same answer or discard* contract that 91% of candidates passed) were run through the arm
+  sweep at the same per-question character budget. Full results:
+  [docs/EVALUATION.md](docs/EVALUATION.md).
+- At a 4,800-character cap, evidence coverage is: sibling facts from the hit episode (`sib25`)
+  **86.0%**, hybrid vector+BM25 **84.9%**, plain vector **80.8%**, episode-block-as-retriever 73.3%,
+  episode block alone **59.3%**. Paired, `sib25` beats plain vector **9–0 (p = 0.0039)**.
+- So structure is worth something, but not the thing it was sold as: **the siblings an episode
+  already knows about add ~5 points of coverage at a generous budget, while routing on the episode
+  layer alone is 20+ points worse than vector search at every cap.**
+- **Asked to answer, everything except the episode-only arm is the same arm.** Model-judged
+  `ok+partial`: `1200/vec` **61.6%**, `4800/vec` **63.4%**, `hybrid` 62.2%, `sib25` 62.2%, `ep`
+  **50.6%**. Four times the context buys 1.8 points; a 5-point coverage gap buys nothing. Even on
+  the original phrasing with every needed fact present only ~75% come out right — **the answering
+  stage is the binding constraint, not the packing.**
+- So the recommended split is: **vector (plus BM25) retrieval picks the facts; the episode layer
+  contributes the siblings it already knows about and formats them** (dates, slots, grouping). Not:
+  route on the episode layer alone.
+- Earlier numbers in this README came from a paraphrase set that turned out to be broken — a quarter
+  of the "rewrites" asked a different question while still being scored against the original gold.
+  On that set the layer looked like it collapsed to 33.8% on paraphrases and structure looked
+  worthless; both were artifacts. The v4 numbers above replace them, and
+  [docs/EVALUATION.md](docs/EVALUATION.md) keeps the old tables as a warning about paraphrase
+  generators.
+- Coverage is mechanical (does the block contain every fact the answer needs) and answers are
+  model-judged; both are reproducible with `python bench/gen-variants.py`, `node bench/ab-gen.mjs`
+  `--variants bench/variants-v4.json`, `python bench/ab-cap.py`, `python bench/ab-answer.py`,
+  `python bench/ab-rejudge-llm.py`.
 - The honest framing: this is a **reference implementation** of the episode layer. The mechanics
   are sound and tested; the win rate on your data is unknown until you measure it.
 - The builder currently reads a JSONL fact stream. It does not talk to any specific memory backend —
