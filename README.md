@@ -137,10 +137,10 @@ Read this before you trust the numbers.
 - On that corpus, 15 multi-part questions scored **14/15 strict, 15/15 lenient** (lenient = the
   episode holding the answer was retrieved, even if the exact fact was not the first line).
 - Against a flat-recall baseline given **the same character budget**, the same questions score
-  **9/15 strict, 11/15 lenient**; a bare 8-fact return scores 5/15. So the layer buys 5 questions
-  over "just stuff more facts in", at ~4.7k characters per question instead of ~0.5k for a bare
-  return. The A/B is mechanical (does the block contain every fact the answer needs) and reproducible
-  with `bench/ab-coverage.mjs` — see [docs/EVALUATION.md](docs/EVALUATION.md).
+  **9/15 strict, 11/15 lenient**; a bare 8-fact return scores 5/15. The arms disagree on 5 questions
+  and all 5 go to the episode layer — but n=15, p ≈ 0.06, so read that as a direction, not a
+  result. The A/B is mechanical (does the block contain every fact the answer needs) and
+  reproducible with `bench/ab-coverage.mjs` — see [docs/EVALUATION.md](docs/EVALUATION.md).
 - The honest framing: this is a **reference implementation** of the episode layer. The mechanics
   are sound and tested; the win rate on your data is unknown until you measure it.
 - The builder currently reads a JSONL fact stream. It does not talk to any specific memory backend —

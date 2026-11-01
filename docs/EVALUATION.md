@@ -100,6 +100,11 @@ Where the episodes win, they win on exactly the shapes the layer was built for:
 
 Two honest notes:
 
+- **n = 15 is too small to call significant.** Treat this as a direction, not a result. The paired
+  comparison has only **5 questions where the two arms disagree, and all 5 favour the episode block**
+  (exact McNemar / sign test: p ≈ 0.0625 two-sided). At leg level it is 32/33 covered vs 27/33. To
+  turn that into p < 0.01 under the same proportions you would need roughly 25 questions of the same
+  shapes — 15 is not enough, and I am not going to dress it up as if it were.
 - **Cost.** The episode block is ~8.6× the tokens of a bare 8-fact return. For a one-fact question
   ("what model is my keyboard") that is pure overhead — you should not pay it. The layer is for
   questions that span time or sources; the router decides per question, so simple questions never
