@@ -185,13 +185,83 @@ list has to reconstruct.** Consequences:
   more budget'"**. Anything stronger is not supported by these numbers.
 - The next experiment worth running is not more arms of this shape, but **union at a fixed token
   cap**: dedupe facts across arms, then render episodes only for the episodes the vector hits land
-  in. That targets "cheaper, not bigger", which is where the union currently wins.
+  in. That targets "cheaper, not bigger", which is where the union currently wins. — *Ran it; see the
+  next section. It does not pay off.*
+
+## Fixed budget: does structure pay for its characters? (112 instances, 5 arms × 3 caps)
+
+Same 112 instances, but now every arm is squeezed into the **same character cap** (1,200 / 2,400 /
+4,800), and dedupe is shared across arms: identical or mutually-contained lines are kept once, so
+sibling facts brought in by the structure are *net new*, not the same sentence reworded.
+
+- `vec` — cosine order, fill to the cap.
+- `ep` — the episode block's own order, truncated at the cap.
+- `structFirst` — lay out the structure of the events the vector hits (including siblings), then fill
+  the rest with vector facts. This is "episodes as the retriever".
+- `sib25` / `sib50` — vector fills to 75% / 50% of the cap, then siblings of the hit events come in,
+  then vector fills the remainder. This is "structure as a top-up".
+
+| cap | arm | full | legs | chars | facts |
+|---|---|---|---|---|---|
+| 1,200 | vec | **65/112 (58.0%)** | 97/154 (63.0%) | 1,198 | 32.5 |
+| 1,200 | ep | 40 (35.7%) | 61 (39.6%) | 1,070 | 23.5 |
+| 1,200 | structFirst | 43 (38.4%) | 62 (40.3%) | 1,198 | 29.7 |
+| 1,200 | sib25 | 64 (57.1%) | 94 (61.0%) | 1,197 | 32.9 |
+| 1,200 | sib50 | 57 (50.9%) | 84 (54.5%) | 1,198 | 32.2 |
+| 2,400 | vec | **78 (69.6%)** | 113 (73.4%) | 2,398 | 63.6 |
+| 2,400 | ep | 54 (48.2%) | 86 (55.8%) | 1,849 | 39.3 |
+| 2,400 | structFirst | 58 (51.8%) | 83 (53.9%) | 2,398 | 58.1 |
+| 2,400 | sib25 | **79 (70.5%)** | 112 (72.7%) | 2,398 | 63.7 |
+| 2,400 | sib50 | 72 (64.3%) | 105 (68.2%) | 2,398 | 62.2 |
+| 4,800 | vec | 89 (79.5%) | 128 (83.1%) | 4,797 | 123.6 |
+| 4,800 | ep | 58 (51.8%) | 91 (59.1%) | 1,970 | 41.4 |
+| 4,800 | structFirst | 74 (66.1%) | 102 (66.2%) | 4,798 | 114.3 |
+| 4,800 | sib25 | **90 (80.4%)** | 127 (82.5%) | 4,797 | 123.7 |
+| 4,800 | sib50 | 87 (77.7%) | 124 (80.5%) | 4,797 | 120.9 |
+
+Paired against `vec` at the same cap (sign test, instances; McNemar, legs):
+
+| cap | arm | won | lost | p(instances) | p(legs) |
+|---|---|---|---|---|---|
+| 4,800 | sib25 | 6 | 5 | 1.0 | 1.0 |
+| 4,800 | sib50 | 6 | 8 | 0.79 | 0.45 |
+| 4,800 | structFirst | 8 | 23 | 0.011 | 7e-05 |
+| 2,400 | sib25 | 3 | 2 | 1.0 | 1.0 |
+| 2,400 | structFirst | 6 | 26 | 0.0005 | 5e-06 |
+| 1,200 | sib25 | 3 | 4 | 1.0 | 0.51 |
+| 1,200 | sib50 | 3 | 11 | 0.057 | 0.004 |
+
+**What it says:**
+
+1. **Structure never pays for its characters.** At every cap, `vec` wins or ties. The best structural
+   arm (`sib25`, a quarter of the budget) is a statistical tie at 1,200 / 2,400 / 4,800 — the point
+   estimates move by one instance in each direction. Giving structure half the budget costs real
+   points at 1,200–2,400 (50.9% vs 58.0% at 1.2k, p = 0.004 on legs).
+2. **"Episodes as the retriever" is significantly worse at every cap**, and the gap *grows* with
+   budget: 38.4% vs 58.0% at 1.2k, 66.1% vs 79.5% at 4.8k (p = 0.011 instances / 7e-05 legs). When the
+   block gets the whole budget it fills it with whole episodes instead of with facts the question
+   needs.
+3. **The one thing structure does buy is exact-wording multi-leg questions.** At 4,800 chars `sib25`
+   gets 43/44 base instances fully covered (97.7%) vs `vec`'s 40/44 (90.9%) — the siblings complete
+   legs the vector only half found. On paraphrases it gives that back (47/68 = 69.1% vs 49/68 =
+   72.1%). Net: zero.
+4. **The knee is the budget, not the structure.** vec alone goes 58.0% → 69.6% → 79.5% for 1.2k →
+   2.4k → 4.8k char caps (+11.6, +9.9). If you want more coverage, buy characters; structuring them
+   differently is a tie at best.
+5. Note `ep` can't even spend a 4.8k budget: its fact lines total ~1,970 chars. The layer was never
+   competing on the same budget — it competes by being short. That is a rendering advantage (cheaper
+   blocks), not a retrieval one.
+
+**Recommendation.** Vector retrieval picks; the episode layer *formats* what the retriever found
+(dates, slots, per-episode grouping) and may add siblings only when they are free (deduped, inside a
+budget you were going to spend anyway). Do not use it to choose candidates.
 
 Reproduce:
 
 ```bash
 node bench/ab-gen.mjs                    # 112 instances + latency, no GPU needed
 python bench/ab-arms.py                  # the 12 arms (needs torch + bge-m3 + bge-reranker-base)
+python bench/ab-cap.py --caps 1200,2400,4800 --reserves 0.25,0.5   # fixed-budget arms
 ```
 
 Both write JSON (`bench/ab-gen.json`, `bench/ab-result-v3.json`). The 15-question three-arm script

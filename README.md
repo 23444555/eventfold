@@ -146,14 +146,22 @@ Read this before you trust the numbers.
   control that matters, vector retrieval filled to the *same* budget, scores **80.4%**: the
   difference is **not significant** (8/4, p = 0.39). So read that gain as "more context", not as
   "structure retrieves better"; the union is merely cheaper per point (5,068 chars vs 6,055).
+- **Squeezed into a fixed budget, structure does not pay for its characters.** At a hard cap of
+  1,200 / 2,400 / 4,800 chars, plain vector recall wins or ties every arm that spends part of the
+  budget on structure (best structural arm `sib25`: 57.1 / 70.5 / 80.4% vs 58.0 / 69.6 / 79.5%,
+  all p ≥ 0.5). Letting the episode block be the retriever is significantly worse at every cap
+  (38.4% vs 58.0% at 1.2k, 66.1% vs 79.5% at 4.8k, p = 0.011). The one thing structure buys is
+  exact-wording multi-leg questions (43/44 = 97.7% vs 90.9% at 4.8k), which paraphrases give back.
 - Conclusion, stated plainly: **the layer does not out-retrieve a vector index, and its advantage is
   lexical** — it renders a better block than a flat list of the same size when the question reuses
   the stored wording, and it collapses when it does not. A vector-seeded router
   (`episodeSeed`: 63.4%, paraphrase collapse cut from 57 points to 27) is the shape of the fix, and
   it is not yet good enough to ship as the default.
+- So the recommended split is: **vector retrieval picks the facts; the episode layer formats them**
+  (dates, slots, per-episode grouping) instead of choosing them.
 - The A/B is mechanical (does the block contain every fact the answer needs) — it measures evidence
   recall, not answer quality — and is reproducible with `node bench/ab-gen.mjs` +
-  `python bench/ab-arms.py`.
+  `python bench/ab-arms.py` + `python bench/ab-cap.py`.
 - The honest framing: this is a **reference implementation** of the episode layer. The mechanics
   are sound and tested; the win rate on your data is unknown until you measure it.
 - The builder currently reads a JSONL fact stream. It does not talk to any specific memory backend —

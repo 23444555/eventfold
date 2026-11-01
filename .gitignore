@@ -4,3 +4,5 @@ tmp/
 .DS_Store
 bench/_seed-*.json
 bench/_gate-blocks.json
+__pycache__/
+*.pyc
