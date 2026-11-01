@@ -11,6 +11,7 @@
   "files": [
     "src/",
     "build/",
+    "bench/",
     "examples/",
     "docs/"
   ],
@@ -19,6 +20,7 @@
   },
   "scripts": {
     "build:example": "python build/archive_build.py --facts examples/facts.jsonl --out examples/data/archive.json",
+    "bench": "node bench/ab-coverage.mjs --out bench/ab-result.json",
     "test": "node test/runtime_test.mjs && python test/build_test.py",
     "test:runtime": "node test/runtime_test.mjs",
     "test:build": "python test/build_test.py"

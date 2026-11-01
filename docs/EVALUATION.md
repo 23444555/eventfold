@@ -41,8 +41,11 @@ shapes:
 | **final: dynamic budget + subject gate + sibling/neighbour expansion** | **14 / 15** | **15 / 15** |
 
 The middle rows are the two budgets that were swept before the routing rules were added; the final
-row is the shipped configuration. A "flat facts, no episodes" control was run early on but its log
-was not kept, so no number is claimed for it.
+row is the shipped configuration.
+
+An earlier version of this document mentioned a "flat facts, no episodes" control (8/15) whose log
+could not be found. That number has been withdrawn and re-measured — see the next section, where the
+same control now scores 5/15 at 8 facts and 9/15 when given the same character budget.
 
 - **strict** = every fact needed for a correct answer is inside the block.
 - **lenient** = the episode containing the answer was retrieved, even if the individual fact was not
@@ -68,6 +71,50 @@ occasionally not every fact inside it.
   score, it stops the wrong object's episode from outranking the right one when both share
   vocabulary.
 
+## A/B: episodes vs plain fact recall, same budget
+
+`bench/ab-coverage.mjs` runs three arms over the same 15 questions and the same mechanical judge
+(each question has a "required evidence set" — a list of legs, each leg a set of interchangeable
+facts; a leg counts as covered when any member appears in the block).
+
+| arm | full coverage (strict) | full coverage (lenient) | chars / query | facts / query | ≈ tokens |
+|---|---|---|---|---|---|
+| **episodes + 8 recalled facts** (shipped) | **14/15 (93%)** | **15/15 (100%)** | 4,684 | 55.3 | 3,045 |
+| 8 recalled facts only (typical memory return) | 5/15 (33%) | 6/15 (40%) | 542 | 8.0 | 352 |
+| recalled facts, **filled to the same char budget** | 9/15 (60%) | 11/15 (73%) | 3,845 | 59.4 | 2,499 |
+
+The third row is the opponent that matters. It is not a straw man: it spends *more* facts (59.4 vs
+55.3) and roughly the same characters, and it still loses 5 questions — because a flat list of 59
+facts has no notion of "this episode is about the thing you asked about, and here is what changed
+inside it".
+
+Where the episodes win, they win on exactly the shapes the layer was built for:
+
+| question | episodes | same-budget flat |
+|---|---|---|
+| 十月份批预算的那台测试机，后来买成什么了？ (approved budget → what was actually bought) | 2/2 | 1/2 |
+| 从开群到新版本发布，一共过了多少天？ (two ends of a span) | 2/2 | 1/2 |
+| 折腾一圈后，缓存 TTL 最后回到了多少？ (a value that changed and changed back) | 2/2 | 2/2 |
+| 两次「汇报说做了、实际没做」分别是哪两个人、什么事？ (two separate denials) | 2/2 | 1/2 |
+| 11 月 26 号发现内存里实际还在跑的是哪个阈值的… | 1/2 | 1/2 |
+
+Two honest notes:
+
+- **Cost.** The episode block is ~8.6× the tokens of a bare 8-fact return. For a one-fact question
+  ("what model is my keyboard") that is pure overhead — you should not pay it. The layer is for
+  questions that span time or sources; the router decides per question, so simple questions never
+  trigger it (see DESIGN.md, "budget escalation").
+- **The judge measures evidence recall, not answer quality.** It says "the facts needed to answer
+  are in the block"; it does not say a model then answers correctly. That keeps the benchmark free
+  to run and impossible to overfit by prompt-wrangling, but it is not an end-to-end score.
+
+Reproduce (needs the corpus and its required-sets file):
+
+```bash
+node bench/ab-coverage.mjs --qa novels/qa-v2.json --req novels/required-sets.json \
+     --archive p0-archive/archive.json --src ../src/archive.mjs
+```
+
 ## Reproduce
 
 ```bash
@@ -84,8 +131,12 @@ the block.
 
 - **Synthetic.** No real chat logs have gone through this pipeline yet. The corpus was designed to be
   solvable by the mechanism, which biases it.
-- **Small n.** 15 questions, one author, no confidence intervals. A 2-question difference is noise.
+- **Small n.** 15 questions, one author, no confidence intervals. A 2-question difference is noise;
+  the 14 vs 9 gap is not (it is 5 questions, but the interval is still wide — treat it as "clearly
+  ahead on this shape of question", not as a percentage you can transfer).
 - **One corpus, one language.** Chinese, homelab domain, one "user". Nothing here says how it behaves
   on multi-user chat or on conversational small talk.
-- **Not compared against a strong baseline.** "Flat facts only" is a weak control. The real
-  comparison — a modern vector store with reranking, same budget — has not been run.
+- **The baseline is lexical, not vector.** The flat arm scores facts by character-bigram overlap
+  (that is what the runtime does when no embedding service is present). A vector index with a
+  cross-encoder reranker would likely close part of the gap on the single-fact legs. Running that
+  comparison is the obvious next step; it has not been done.
