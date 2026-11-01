@@ -9,6 +9,7 @@
   vecRr          bge-m3 top-50 -> bge-reranker-base 重排，同预算填充
   episode        档案块（archiveBlock）+ 8 条事实   <- 生产形态
   episodeNoBoost 同上但关掉复杂度加预算（ablation）
+  episodeSeed    档案块，但用向量 top-25 命中的事实所属事件当路由种子（不加别的事实）
   episodePlusVec 档案块与向量臂的并集（不裁剪，字数翻倍，用来量上限）
 
 判分：每条腿是一组等价事实 id，块里出现任一即算齐；strict=归一化文本完全包含，
@@ -30,7 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 NEAR = 0.55
 MODEL = os.environ.get("AB_EMBED_MODEL", r"E:\dshxz\hindsight\models\bge-m3-ms")
 RERANK = os.environ.get("AB_RERANK_MODEL", r"E:\dshxz\hindsight\models\bge-reranker-base")
-ARMS = ["nil", "flat8", "flatBudget", "bm25", "vec", "vecRr", "episodeNoBoost", "episode", "episodePlusVec"]
+ARMS = ["nil", "flat8", "flatBudget", "bm25", "vec", "vecRr", "vecBudget", "episodeNoBoost", "episode", "episodeSeed", "episodeSeedGate", "episodePlusVec"]
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2} ")
 
 
@@ -144,8 +145,15 @@ def main():
     ap.add_argument("--gen", default=os.path.join(HERE, "ab-gen.json"))
     ap.add_argument("--out", default=os.path.join(HERE, "ab-result-v2.json"))
     ap.add_argument("--topk", type=int, default=50)
+    ap.add_argument("--pool", type=int, default=400, help="填预算时的候选池大小（太小会让「同预算」失效）")
     ap.add_argument("--device", default="")
+    ap.add_argument("--archive", default=os.path.join(HERE, "..", "..", "p0-archive", "archive.json"))
+    ap.add_argument("--seed-topk", type=int, default=25, help="用向量 top-N 条事实推事件种子")
+    ap.add_argument("--seed-n", type=int, default=4, help="最多几个种子事件")
+    ap.add_argument("--seed-gate", type=float, default=0.5,
+                    help="词面最高分达到这个值就让种子让位（episodeSeedGate 臂）")
     args = ap.parse_args()
+    archive, seed_topk, seed_n, seed_gate = args.archive, args.seed_topk, args.seed_n, args.seed_gate
 
     d = json.load(open(args.gen, encoding="utf-8"))
     inst, corpus = d["instances"], d["corpus"]
@@ -176,6 +184,48 @@ def main():
 
     bm = BM25([f["t"] for f in corpus])
 
+    # episodeSeed 臂：用向量 top-{seed_topk} 命中事实所属的事件当路由种子，再让档案层自己铺开。
+    # 这一臂的量的是「把路由从词面换成向量种子，值多少」——不附加任何额外事实。
+    seed_blocks = {}
+    gate_blocks = {}
+    if "episodeSeed" in ARMS and seed_topk > 0:
+        fact2ev = {}
+        if os.path.isfile(archive):
+            snap = json.load(open(archive, encoding="utf-8"))
+            for ev in snap.get("events", []):
+                for f in ev.get("facts", []):
+                    if isinstance(f, dict) and f.get("i") is not None:
+                        fact2ev[int(f["i"])] = ev["id"]
+        jobs = []
+        for k, x in enumerate(inst):
+            ids = []
+            for i in top_idx[k][:seed_topk]:
+                ev = fact2ev.get(int(corpus[i]["i"]))
+                if ev and ev not in ids:
+                    ids.append(ev)
+                if len(ids) >= seed_n:
+                    break
+            jobs.append({"iid": x["iid"], "q": x["q"], "seeds": ids})
+        jf = os.path.join(HERE, "_seed-jobs.json")
+        bf = os.path.join(HERE, "_seed-blocks.json")
+        json.dump({"items": jobs}, open(jf, "w", encoding="utf-8"), ensure_ascii=False)
+        import subprocess
+        def run_seeds(out_path, gate):
+            cmd = ["node", os.path.join(HERE, "seed-blocks.mjs"), "--jobs", jf, "--out", out_path,
+                   "--archive", archive, "--src", os.path.join(HERE, "..", "src", "archive.mjs")]
+            if gate is not None:
+                cmd += ["--seed-gate", str(gate)]
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode != 0:
+                raise SystemExit(f"seed-blocks failed rc={r.returncode}\n{r.stdout}\n{r.stderr}")
+            print(("gate " + str(gate) + " " if gate is not None else "") + r.stdout.strip(), flush=True)
+            return json.load(open(out_path, encoding="utf-8"))
+
+        seed_blocks = run_seeds(bf, None)
+        if "episodeSeedGate" in ARMS:
+            gb = os.path.join(HERE, "_gate-blocks.json")
+            gate_blocks = run_seeds(gb, seed_gate)
+
     arms = {k: [] for k in ARMS}
     for k, x in enumerate(inst):
         budget = x["epChars"]
@@ -186,14 +236,23 @@ def main():
             "flatBudget": [re.sub(DATE_RE, "", t) for t in x["flatBudget"]],
             "episode": ep,
             "episodeNoBoost": [norm(t) for t in x["noBoost"]] + [norm(t) for t in x["flat8"]],
+            "episodeSeed": [re.sub(DATE_RE, "", re.sub(r"^[\s\-*•]+", "", norm(t)))
+                            for t in (seed_blocks.get(x["iid"], "") or "").splitlines() if t.strip()],
+            "episodeSeedGate": [re.sub(DATE_RE, "", re.sub(r"^[\s\-*•]+", "", norm(t)))
+                                for t in (gate_blocks.get(x["iid"], "") or "").splitlines() if t.strip()],
         }
 
         bs = bm.score(x["q"])
         order = [(corpus[i]["i"], float(bs[i])) for i in np.argsort(-bs)[:400] if bs[i] > 0]
         picked["bm25"] = [re.sub(DATE_RE, "", l) for l in fill(order, budget, corpus_by_i)]
 
+        # 候选池要够大，否则「同预算」是假的：top-50 平均只能填 1,800 字，而预算中位 4,900 字。
+        pool = [(corpus[i]["i"], float(sims[k][i])) for i in np.argsort(-sims[k])[: args.pool]]
         vsim = [(corpus[i]["i"], float(sims[k][i])) for i in top_idx[k]]
-        picked["vec"] = [re.sub(DATE_RE, "", l) for l in fill(vsim, budget, corpus_by_i)]
+        picked["vec"] = [re.sub(DATE_RE, "", l) for l in fill(pool, budget, corpus_by_i)]
+        # 关键对照：给向量臂「档案块 + 向量臂」那份字数。若并集的收益只是 token 多，这一臂会追平它。
+        union_budget = budget + sum(len(l) + 1 for l in picked["vec"])
+        picked["vecBudget"] = [re.sub(DATE_RE, "", l) for l in fill(pool, union_budget, corpus_by_i)]
 
         if reranker is not None:
             pairs = [(x["q"], corpus_by_i[i]["t"]) for i, _ in vsim]

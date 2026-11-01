@@ -198,9 +198,17 @@ function stripDates(s) {
     .replace(/\d{1,2}\s*[-月/]\s*\d{1,2}\s*[日号]?/g, ' ');
 }
 
-export function routeEvents(query, n) {
+export function routeEvents(query, n, opts = {}) {
   const qg = bigrams(queryOnly(stripDates(query)));
   const dm = dateIn(query);
+  // 外部给的种子事件（通常是向量召回命中的事实所属的那一段）。词面路由只看措辞，
+  // 改写问句里人名和术语一抽就没了钩子，所以允许调用方用别的通路把「哪几段」告诉它，
+  // 这里只负责给种子一个分数地板，剩下的铺开逻辑照旧（结构化展开才是它值钱的地方）。
+  const seeds = new Set((opts.seedEvents || []).filter(Boolean).map(String));
+  const seedFloor = Number(process.env.ARCHIVE_SEED_SCORE || 0.62);
+  // 只在词面路由「不确定」时才让种子接管：词面自己就能给出高分事件时，硬塞种子会把
+  // 本来排第一的那段挤掉（实测原话问从 90.9% 掉到 79.5%）。gate=0 表示种子永远生效。
+  const seedGate = Number(process.env.ARCHIVE_SEED_GATE || 0);
   const tokens = String(query).toLowerCase().match(/[a-z]+[0-9]*|[0-9]{2,}/g) || [];
   const scored = buildIndex().items.map((it) => {
     let s = coverIdf(qg, it);
@@ -245,7 +253,10 @@ export function routeEvents(query, n) {
       s += 0.25 * Math.log((total + 1) / (tdf + 1)) + 0.1;
       tokenHit = true;
     }
-    return { e: it.e, s, dateHit, bodyHit, tokenHit };
+    const lex = s;
+    const seedHit = seeds.has(String(it.e.id));
+    if (seedHit) s = Math.max(s, seedFloor);
+    return { e: it.e, s, lex, dateHit, bodyHit, tokenHit, seedHit };
   });
   if (dm) {
     // 日期是最硬的锚：同月同日的事件就算词面不像，也先拉进来（跨年不管，
@@ -286,6 +297,18 @@ export function routeEvents(query, n) {
     };
     for (const x of scored) if (!x.dateHit && !x.tokenHit) x.far = near(x.e) > farDays;
   }
+  // 词面自己够确定（最高分 >= gate）就让种子让位：只回退种子带来的加分，词面分数照旧。
+  if (seeds.size && seedGate > 0) {
+    const bestLex = scored.reduce((m, x) => Math.max(m, x.lex), 0);
+    if (bestLex >= seedGate) {
+      for (const x of scored) {
+        x.s = x.lex;
+        x.seedHit = false;
+      }
+    }
+  }
+  // 种子事件是被别的通路点名要的，日期远近与「补位」限额都不该把它挡掉。
+  for (const x of scored) if (x.seedHit) x.far = false;
   // 只靠「正文最像的那一条」补位进来的事件（大杂烩里 502 这类）要单独立规矩：
   // 它偶尔救命（CT1 的「其他」），但也会把整段无关的发布史拖进来占满预算。
   const min = Number(process.env.ARCHIVE_MIN_SCORE || 0.18);
@@ -303,7 +326,7 @@ export function routeEvents(query, n) {
   for (const x of scored) {
     if (x.s < min) break;
     if (x.far) continue;
-    const isFiller = !!(x.bodyHit && !x.dateHit && !x.tokenHit);
+    const isFiller = !!(x.bodyHit && !x.dateHit && !x.tokenHit) && !x.seedHit;
     if (isFiller) {
       if (x.s < bodyMin) continue;
       if (filler >= fillerMax) continue;
@@ -545,6 +568,13 @@ export function lastUsedEvents() {
 
 export function archiveBlock(query, opts = {}) {
   let { limit = 40, events: maxEvents = 5, perEvent = 10, threads = 0 } = opts;
+  // 可选：调用方（比如向量召回）点名要铺开的那几段。给了种子就不再走「主体直取」那条快路，
+  // 因为那条路只按问句里的主体名找，改写问句里主体名往往已经被抽掉了。
+  const seedIds = [...new Set((opts.seedEvents || []).filter(Boolean).map(String))];
+  const seedOpts = { seedEvents: seedIds };
+  const seedItems = seedIds.length
+    ? buildIndex().items.filter((it) => seedIds.includes(String(it.e.id))).map((it) => ({ e: it.e, s: 1 }))
+    : [];
   // 多腿题（一问两件、归因、跨段）用常规预算必然只铺到一半：40/5/12 只到 12/15，
   // 32/5/8 更差（9/15）。所以按问句复杂度自己抬预算，简单题照旧省上下文。
   if (
@@ -560,9 +590,11 @@ export function archiveBlock(query, opts = {}) {
     Math.max(limit, Math.min(Number(process.env.ARCHIVE_LIMIT_MAX || 52), routed.length * perEvent));
   const qg = bigrams(queryOnly(query));
   // 先按主体直取（结构化），剩下的位子再用相似度路由补
-  const bySubject = routeSubjects(query, Number(process.env.ARCHIVE_SUBJ || 2), Number(process.env.ARCHIVE_SUBJ_EPS || 3));
+  const bySubject = seedIds.length
+    ? []
+    : routeSubjects(query, Number(process.env.ARCHIVE_SUBJ || 2), Number(process.env.ARCHIVE_SUBJ_EPS || 3));
   if (bySubject.length) {
-    const ranked0 = routeEvents(query, Math.max(maxEvents * 3, 12));
+    const ranked0 = routeEvents(query, Math.max(maxEvents * 3, 12), seedOpts);
     const merged = [...bySubject];
     for (const it of ranked0) {
       if (merged.length >= maxEvents + bySubject.length) break;
@@ -572,14 +604,20 @@ export function archiveBlock(query, opts = {}) {
     const body = renderAll(query, merged2, growLimit(merged2), perEvent);
     if (body) return withIntent(query, body);
   }
-  if (threads <= 0 && STORY_Q.test(String(query || ''))) {
+  if (threads <= 0 && !seedIds.length && STORY_Q.test(String(query || ''))) {
     const story = routeStory(query, maxEvents);
     if (story.length > 1) {
       const body = renderAll(query, story, limit, perEvent);
       if (body) return withIntent(query, body);
     }
   }
-  const ranked = routeEvents(query, Math.max(maxEvents * 3, 12));
+  const routed0 = routeEvents(query, Math.max(maxEvents * 3, 12), seedOpts);
+  // 种子排在最前：它们是被点名的，不能因为词面分数低就被挤出 maxEvents。
+  // 但 gate 生效（词面已够确定）时 routeEvents 会把种子丢掉，这时也不许硬塞。
+  const seedApplied = seedItems.length && routed0.some((x) => seedIds.includes(String(x.e.id)));
+  const ranked = seedApplied
+    ? [...seedItems, ...routed0.filter((x) => !seedIds.includes(String(x.e.id)))]
+    : routed0;
   if (!ranked.length) return '';
   // 先在「线」这一层排名，再在线内轮流取事件：
   // 一条线（thread）才是一件事情的完整经过，单个事件只是它的一段；

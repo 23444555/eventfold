@@ -135,18 +135,22 @@ Read this before you trust the numbers.
   [docs/EVALUATION.md](docs/EVALUATION.md) uses a **synthetic** corpus (a fictional homelab
   operator: 1,067 facts → 58 episodes). It is a reproducible benchmark, not field evidence.
 - On that corpus, **112 question instances** (44 originally-phrased + 68 paraphrased, where the
-  paraphrase strips the names and domain terms) were run through **9 arms** at the same per-question
+  paraphrase strips the names and domain terms) were run through **12 arms** at the same per-question
   character budget. Full results: [docs/EVALUATION.md](docs/EVALUATION.md).
-- The episode block scores **56.2%** full evidence coverage overall — **90.9% on the original
-  phrasing** (best single arm, beating a same-budget flat recall at 75.0%, p = 0.035) but **33.8% on
-  paraphrases**. A plain vector arm (bge-m3) scores **67.9%** overall, 55.9% on paraphrases. Against
-  BM25 the episode block is a **tie** (55.4% vs 56.2%, p = 1.0).
-- **Putting the episode block *and* the vector arm in context scores 81.2%** (100% original, 69.1%
-  paraphrased, 28/0 against the shipped arm, p < 0.0001) for ~1.5× the tokens. That is the honest
-  headline: the structured layer is sharp, the vector arm is robust, neither wins alone.
-- The routing is therefore **lexical**, and that is a known limitation: strip the wording and the
-  layer loses half its advantage. The obvious next step (vector seeds for the router) is described in
-  [docs/EVALUATION.md](docs/EVALUATION.md) and not yet implemented.
+- The episode block scores **56.2%** full evidence coverage — **90.9% on the original phrasing**
+  (beats a same-budget flat recall at 75.0%, p = 0.035) but **33.8% on paraphrases**. A plain vector
+  arm (bge-m3) scores **73.2%** overall and 63.2% on paraphrases, and **beats the episode block
+  significantly** (30 instances won, 11 lost, p = 0.004). Against BM25 the episode block is a **tie**
+  (55.4% vs 56.2%, p = 1.0).
+- Episodes **and** vectors together score **83.9%** (100% original, 73.5% paraphrased) — but the
+  control that matters, vector retrieval filled to the *same* budget, scores **80.4%**: the
+  difference is **not significant** (8/4, p = 0.39). So read that gain as "more context", not as
+  "structure retrieves better"; the union is merely cheaper per point (5,068 chars vs 6,055).
+- Conclusion, stated plainly: **the layer does not out-retrieve a vector index, and its advantage is
+  lexical** — it renders a better block than a flat list of the same size when the question reuses
+  the stored wording, and it collapses when it does not. A vector-seeded router
+  (`episodeSeed`: 63.4%, paraphrase collapse cut from 57 points to 27) is the shape of the fix, and
+  it is not yet good enough to ship as the default.
 - The A/B is mechanical (does the block contain every fact the answer needs) — it measures evidence
   recall, not answer quality — and is reproducible with `node bench/ab-gen.mjs` +
   `python bench/ab-arms.py`.

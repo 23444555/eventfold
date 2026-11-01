@@ -71,20 +71,21 @@ occasionally not every fact inside it.
   score, it stops the wrong object's episode from outranking the right one when both share
   vocabulary.
 
-## A/B: episodes vs every baseline, same budget (112 instances, 9 arms)
+## A/B: episodes vs every baseline, same budget (112 instances, 12 arms)
 
 The first version of this benchmark had 15 questions and three arms. That was too small to call
 anything (5 discordant questions, p ≈ 0.06), and it had a hole in it: the "opponent" was a lexical
 baseline, so a reviewer could reasonably say *the gap is just because you never tried vectors*. This
-section is the bigger run that closes both holes.
+section is the bigger run that closes both holes — and it does not flatter the layer.
 
 Setup (`bench/ab-gen.mjs` + `bench/ab-arms.py`):
 
 - **112 instances** — the 44 questions that have an evidence anchor, plus all 68 documented
   **paraphrases** of them (the variants strip names and domain terms, so routing cannot lean on the
   words in the question). 62 required-evidence legs, counted once per instance → **154 leg-instances**.
-- **Nine arms**, all fed the *same character budget per instance* (the episode block's own size,
-  median 4,924 chars):
+- **12 arms**, each fed the *same per-instance character budget* (the episode block's own size,
+  median 4,924 chars; the candidate pool for filling was raised to 400 so the budget is actually
+  spendable — with a top-50 pool no arm could fill it and "same budget" was a lie).
 
 | # | arm | what it is |
 |---|---|---|
@@ -92,28 +93,34 @@ Setup (`bench/ab-gen.mjs` + `bench/ab-arms.py`):
 | 2 | `flat8` | 8 facts by character-bigram coverage (a typical memory return) |
 | 3 | `flatBudget` | 8 facts, then keep filling until the episode budget is spent |
 | 4 | `bm25` | character-bigram BM25 over the same 1,067 facts, filled to budget |
-| 5 | `vec` | bge-m3 cosine top-k over the same facts, filled to budget |
+| 5 | `vec` | bge-m3 cosine over the same facts, filled to budget |
 | 6 | `vecRr` | bge-m3 top-50 → bge-reranker-base, filled to budget |
-| 7 | `episodeNoBoost` | the episode block with complexity escalation **off** |
-| 8 | `episode` | the episode block with escalation **on** (shipped form) |
-| 9 | `episodePlusVec` | episode block **and** the vector arm, both in context, not trimmed |
+| 7 | `vecBudget` | same as `vec`, but filled to the **union arm's** budget (the token control) |
+| 8 | `episodeNoBoost` | the episode block with complexity escalation **off** |
+| 9 | `episode` | the episode block with escalation **on** (shipped form) |
+| 10 | `episodeSeed` | episode block whose router is seeded with the episode ids of the vector top-25 |
+| 11 | `episodeSeedGate` | same, but seeds only apply when lexical routing is unsure (best score < 0.5) |
+| 12 | `episodePlusVec` | episode block **and** the vector arm, both in context, not trimmed |
 
-Judge: a leg is covered when any of its interchangeable facts appears in the block (strict =
-normalized-text containment; lenient = character-bigram Jaccard ≥ 0.55).
+Judge: a leg is covered when its exact fact text appears among the block's lines (strict), or when a
+line reaches character-bigram Jaccard ≥ 0.55 with it (lenient).
 
 ### Overall
 
 | arm | full coverage (strict) | full (lenient) | legs covered | chars | facts | ≈ tokens |
 |---|---|---|---|---|---|---|
 | nil | 0/112 (0%) | 0/112 (0%) | 0/154 | 0 | 0 | 0 |
-| flat8 | 37/112 (33.0%) | 40/112 (35.7%) | 57/154 (37.0%) | 432 | 7.9 | 280 |
-| flatBudget | 52/112 (46.4%) | 58/112 (51.8%) | 79/154 (51.3%) | 1,990 | 37.6 | 1,293 |
-| bm25 | 62/112 (55.4%) | 63/112 (56.2%) | 90/154 (58.4%) | 2,476 | 56.4 | 1,609 |
-| vec | 76/112 (67.9%) | 82/112 (73.2%) | 109/154 (70.8%) | 1,821 | 46.5 | 1,183 |
-| vecRr | 77/112 (68.8%) | 83/112 (74.1%) | 109/154 (70.8%) | 1,822 | 46.4 | 1,184 |
-| episodeNoBoost | 61/112 (54.5%) | 64/112 (57.1%) | 92/154 (59.7%) | 2,374 | 48.6 | 1,543 |
-| **episode** (shipped) | **63/112 (56.2%)** | **66/112 (58.9%)** | **96/154 (62.3%)** | 2,417 | 49.9 | 1,571 |
-| **episodePlusVec** | **91/112 (81.2%)** | **95/112 (84.8%)** | **128/154 (83.1%)** | 3,686 | 85.6 | 2,395 |
+| flat8 | 37/112 (33.0%) | 40/112 (35.7%) | 57/154 | 432 | 7.9 | 280 |
+| flatBudget | 52/112 (46.4%) | 58/112 (51.8%) | 79/154 | 1,990 | 37.6 | 1,293 |
+| bm25 | 62/112 (55.4%) | 63/112 (56.2%) | 90/154 | 2,476 | 56.4 | 1,609 |
+| vec | 82/112 (73.2%) | 87/112 (77.7%) | 115/154 | 3,402 | 87.6 | 2,211 |
+| vecRr | 77/112 (68.8%) | 83/112 (74.1%) | 109/154 | 1,822 | 46.4 | 1,184 |
+| **vecBudget** | **90/112 (80.4%)** | **94/112 (83.9%)** | 126/154 | 6,055 | 153.1 | 3,936 |
+| episodeNoBoost | 61/112 (54.5%) | 64/112 (57.1%) | 92/154 | 2,374 | 48.6 | 1,543 |
+| **episode** (shipped) | **63/112 (56.2%)** | **66/112 (58.9%)** | 96/154 | 2,417 | 49.9 | 1,571 |
+| episodeSeed | 71/112 (63.4%) | 74/112 (66.1%) | 100/154 | 4,029 | 72.2 | 2,618 |
+| episodeSeedGate | 66/112 (58.9%) | 68/112 (60.7%) | 99/154 | 3,649 | 65.4 | 2,371 |
+| **episodePlusVec** | **94/112 (83.9%)** | **98/112 (87.5%)** | **131/154** | 5,068 | 122.3 | 3,294 |
 
 ### The split that matters
 
@@ -122,56 +129,73 @@ normalized-text containment; lenient = character-bigram Jaccard ≥ 0.55).
 | flat8 | 61.4% | 14.7% | +46.7 pt |
 | flatBudget | 75.0% | 27.9% | +47.1 pt |
 | bm25 | 88.6% | 33.8% | +54.8 pt |
-| vec | 86.4% | 55.9% | +30.5 pt |
+| vec | 88.6% | 63.2% | +25.4 pt |
 | vecRr | 86.4% | 57.4% | +29.0 pt |
+| vecBudget | 93.2% | 72.1% | +21.1 pt |
 | episodeNoBoost | 88.6% | 32.4% | +56.3 pt |
 | **episode** | **90.9%** | **33.8%** | **+57.1 pt** |
-| episodePlusVec | 100.0% | 69.1% | +30.9 pt |
+| episodeSeed | 79.5% | 52.9% | +26.6 pt |
+| episodeSeedGate | 81.8% | 44.1% | +37.7 pt |
+| episodePlusVec | 100.0% | 73.5% | +26.5 pt |
 
-### What this says, including the parts I do not like
+### What this actually says
 
-1. **On the original phrasing the episode block is the best single-source arm** — 90.9% vs the
-   same-budget flat list at 75.0% (paired: 17 questions won, 6 lost, p = 0.035; legs 23 vs 6,
-   p = 0.0023). So the earlier 14/15 vs 9/15 claim was directionally right on this shape of data.
-2. **On paraphrases the episode block collapses to 33.8%, and pure vector retrieval holds 55.9%.**
-   The drop is 57 points for the episode block versus 30 for vectors. That is not a tuning detail —
-   `archive.mjs` routes on characters, subjects and slot aliases, and the variants remove exactly
-   those hooks. The layer's advantage is **lexical**, and it disappears the moment the user does not
-   reuse the wording that got stored.
-3. **Against BM25 the episode block is a tie overall** (55.4% vs 56.2%, 13 wins / 12 losses,
-   p = 1.0). The structure buys sharpness on questions asked in the original words, not robustness.
-4. **The reranker buys nothing here** (vecRr 68.8% vs vec 67.9%): with a fixed character budget the
-   reranker mostly reorders candidates that both arms already fit. Reranking pays when the candidate
-   list is long and the budget is tight, which is not this setup.
-5. **The union is the only arm that is clearly better than everything else** — 81.2% overall, 100%
-   on the original phrasing, 69.1% on paraphrases, 28/0 against the shipped arm (p < 0.0001 at query
-   level, 32/0 at leg level). It costs ~1.5× the tokens (2,395 vs 1,571), which is the honest price.
+1. **Plain vector retrieval beats the episode block by a wide, significant margin.** 73.2% vs 56.2%
+   (paired: 30 instances won, 11 lost, p = 0.004; legs 34 vs 13, p = 0.003). The layer is not a better
+   retriever than a vector index at the same budget — it is a different one, and on paraphrases it is
+   much worse.
+2. **The layer's advantage is lexical, and it evaporates when the wording changes.** 90.9% on the
+   original phrasing (best single arm; beats same-budget flat recall at 75.0%, p = 0.035) but 33.8% on
+   paraphrases — a 57-point drop. Vectors lose 25 points on the same shift. Against BM25 the overall
+   result is a **tie** (55.4% vs 56.2%, 13 wins / 12 losses, p = 1.0): the structure buys sharpness in
+   the stored vocabulary, not robustness.
+3. **The union is the best arm, but most of its gain is "more facts", not structure.** 83.9% vs
+   80.4% for `vecBudget`, the vector arm filled to the union's budget: 8 wins / 4 losses,
+   **p = 0.39 — not significant**. So "episodes + vectors" ≈ "vectors with an even larger budget".
+   The union is at least cheaper per point (5,068 chars for 83.9% vs 6,055 for 80.4%), which is an
+   efficiency argument, not a recall one.
+4. **Seeding the router with vectors helps the layer a lot and still does not win.** `episodeSeed`
+   lifts the block from 56.2% to 63.4% (12 wins / 20 losses against the shipped arm, p = 0.22) by
+   fixing the paraphrase collapse (33.8% → 52.9%) at the cost of the original phrasing
+   (90.9% → 79.5%), and it spends 1.7× the tokens. Gating seeds on low lexical confidence
+   (`episodeSeedGate`) is worse than not gating (58.9%): at a 0.5 gate the router is almost always
+   "confident", so seeds rarely apply. Either way it stays below plain `vec`.
+5. **The reranker buys nothing here.** `vecRr` 68.8% vs `vec` 73.2% — but note `vecRr` reranked only
+   top-50 and therefore could not fill the budget (1,822 chars vs 3,402): this run says "reranking a
+   short list does not help", not "reranking never helps".
 6. **Complexity escalation is worth almost nothing on this data** (56.2% vs 54.5%, 3 wins / 1 loss,
-   p = 0.63). It is cheap (the routing call is p50 **9.1 ms**, p95 14.9 ms), so it can stay, but do
-   not sell it as a win.
-7. **The judge still measures evidence recall, not answers.** Everything above says "the facts needed
-   are in the block"; none of it says a model then answers correctly.
+   p = 0.63). It is cheap (routing p50 **9.1 ms**, p95 14.9 ms), so it can stay — but it is not a
+   selling point.
+7. **The judge measures evidence recall, not answers.** Everything above says "the facts needed are
+   in the block"; none of it says a model then answers correctly.
 
-### What I would change in the runtime because of this
+### What I would change because of this
 
-The routing decision should not be lexical-only. The cheapest fix that this benchmark supports is
-**vector seeds for the router**: embed the question, take the top-N facts, and use their
-`episode_id`s as additional seeds for `routeEvents` — then keep the structured expansion (which is
-what wins on the original phrasing) on top. The union arm here is the upper bound of exactly that
-change at 1.5× tokens; a seed-based version should get most of it at close to the current cost. That
-work is not done, and until it is, this file should not be quoted as "episodes beat vector search".
+The measurement does not support "the episode layer retrieves better". It supports a narrower claim:
+**the episode layer renders a better block than a flat list of the same size for questions asked in
+the stored vocabulary, and it gives free structure (dates, slots, per-episode grouping) that a flat
+list has to reconstruct.** Consequences:
+
+- Retrieval should be **vector-first**; the episode layer should be a *rendering* path over whatever
+  the retriever found. That is what `episodeSeed` starts to do, and it is why that arm cuts the
+  paraphrase collapse from 57 points to 27 (while losing on the original phrasing — the seed policy,
+  not the mechanism, is what needs work).
+- The honest one-line claim for the README is: **"same budget, better block on questions in your own
+  words; no better than a vector index on paraphrases; and it does not significantly beat 'vector +
+  more budget'"**. Anything stronger is not supported by these numbers.
+- The next experiment worth running is not more arms of this shape, but **union at a fixed token
+  cap**: dedupe facts across arms, then render episodes only for the episodes the vector hits land
+  in. That targets "cheaper, not bigger", which is where the union currently wins.
 
 Reproduce:
 
 ```bash
 node bench/ab-gen.mjs                    # 112 instances + latency, no GPU needed
-python bench/ab-arms.py                  # the 9 arms (needs torch + bge-m3 + bge-reranker-base)
+python bench/ab-arms.py                  # the 12 arms (needs torch + bge-m3 + bge-reranker-base)
 ```
 
-Both write JSON (`bench/ab-gen.json`, `bench/ab-result-v2.json`). The 15-question three-arm script
-(`bench/ab-coverage.mjs`) is kept for the smaller, cheaper check — its numbers are the ones in the
-older table above; treat them as a subset of this run, not as a separate result.
-
+Both write JSON (`bench/ab-gen.json`, `bench/ab-result-v3.json`). The 15-question three-arm script
+(`bench/ab-coverage.mjs`) is kept for a quicker check; treat it as a subset, not a separate result.
 
 ## Reproduce
 
@@ -188,15 +212,15 @@ those shapes against your own corpus, then check whether every needed fact is in
 
 - **Synthetic.** No real chat logs have gone through this pipeline yet. The corpus was designed to be
   solvable by the mechanism, which biases it.
-- **Paired, but one author.** 112 instances is enough to say the union arm wins (28/0, p < 0.0001)
-  and that the episode block loses to vectors on paraphrases (27/14, p = 0.06 — *just* above the
-  line). It is not enough to pin down single-digit differences, and every question came from one
-  person writing them against one corpus. Do not transfer the percentages; transfer the ordering.
+- **Paired, but one author.** 112 instances is enough to say the episode block loses to plain vector
+  retrieval (30/11, p = 0.004) and that it is not significantly better than "vector + more budget"
+  (8/4, p = 0.39). It is not enough to pin down single-digit differences, and every question came from
+  one person writing them against one corpus. Do not transfer the percentages; transfer the ordering.
 - **One corpus, one language.** Chinese, homelab domain, one "user". Nothing here says how it behaves
   on multi-user chat or on conversational small talk.
 - **The paraphrase set is the important part.** The 68 rewritten variants are what expose the lexical
-  routing (33.8% vs 55.9%). If you only ever test questions asked in the same words as the stored
+  routing (33.8% vs 63.2%). If you only ever test questions asked in the same words as the stored
   text, this layer will look better than it is.
-- **The judge measures evidence recall, not answers.** And the budget arm gives every baseline the
-  episode block's footprint, so "same budget" is generous to the baselines on characters and mean on
-  tokens (a flat list of facts packs less per character than structured prose).
+- **The judge measures evidence recall, not answers.** And "same budget" is measured in characters of
+  the rendered block, which favours prose over fact lists: a flat list of 153 facts spends more
+  tokens than a 5,000-character episode block.

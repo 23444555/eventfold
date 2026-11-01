@@ -2,3 +2,5 @@
 tmp/
 *.log
 .DS_Store
+bench/_seed-*.json
+bench/_gate-blocks.json
