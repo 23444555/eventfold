@@ -158,6 +158,11 @@ Read this before you trust the numbers.
   worthless; both were artifacts. The v4 numbers above replace them, and
   [docs/EVALUATION.md](docs/EVALUATION.md) keeps the old tables as a warning about paraphrase
   generators.
+- **Numbering the fact lines is worth 14 points; asking the model to cite them costs points.** Giving
+  every line a stable `[F<id>]` lifts correct answers from **63.4% to 77.3%** and cuts abstention from
+  20% to 16% (172 instances, same judge, same material). Requiring provenance then taxes it: a soft ask
+  gives 76.2%, a mandated template 73.8%, mandated free wording 70.3%. Labels stay in the format;
+  citation is a preference, not a rule.
 - Coverage is mechanical (does the block contain every fact the answer needs) and answers are
   model-judged; both are reproducible with `python bench/gen-variants.py`, `node bench/ab-gen.mjs`
   `--variants bench/variants-v4.json`, `python bench/ab-cap.py`, `python bench/ab-answer.py`,

@@ -94,7 +94,8 @@ def main():
         v = parse(txt)
         by_arm[r["arm"]][v] += 1
         res.append({"iid": r["iid"], "arm": r["arm"], "kind": r["kind"],
-                    "mech": r["verdict"], "llm": v, "answer": r["answer"]})
+                    "mech": r.get("verdict") or ("abstain" if r.get("abstain") else ""),
+                    "llm": v, "answer": r["answer"]})
     json.dump(res, open(args.out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
     print("\n## 每臂：机械判分 vs 模型判分（ok+partial 都算对）\n")

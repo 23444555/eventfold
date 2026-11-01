@@ -503,6 +503,43 @@ python bench/ab-answer.py --gen bench/ab-gen-v4.json --blocks bench/ab-cap-block
 python bench/ab-rejudge-llm.py --in bench/ab-answer-v4.json --out bench/ab-rejudge-v4.json
 ```
 
+## Fact ids: identity is an affordance, asking for citations is a tax
+
+Every fact line in the material gets its real `[F<id>]` prefix, and the instruction changes only in how
+hard it leans on citations. 172 instances, arm `4800/vec`, same judge, same prompt otherwise.
+
+| closing instruction | ok | ok+partial | abstained | cited | citation hit the gold legs |
+|---|---|---|---|---|---|
+| none (no ids at all) | 51.2% | **63.4%** | 20% | - | - |
+| ids, never mention them | 72.1% | **77.3%** | 16% | 0% | - |
+| ids, soft ("if it fits, mention it") | 71.5% | 76.2% | 17% | 72% | 56% |
+| ids, mandatory, rigid template | 69.2% | 73.8% | 19% | 74% | 48% |
+| ids, mandatory, free wording | 66.3% | 70.3% | 23% | 78% | 60% |
+
+Three things to read off this:
+
+1. **Stable names for the lines are worth +14 points on their own** (63.4% -> 77.3%), and they cut
+   abstention from 20% to 16%. Copying material verbatim does not explain it (35-38% of answers are
+   verbatim in every labelled configuration). A number per line gives the model something to *point
+   at*; it stops having to re-read forty near-identical sentences to decide which one is meant.
+2. **Any requirement to report provenance is a tax, and the tighter the template the bigger the tax**:
+   no mention 77.3% > soft 76.2% (-1.1) > mandated template 73.8% (-3.5) > mandated free wording
+   (-7.0). The model spends accuracy on ceremony.
+3. **Asked, it does cite; unasked, it never does** (0% -> 72-78%). So this is a choice about what the
+   transcript is for, not about model capability.
+
+What that means for the design: label every fact line, permanently, as part of the format. Do not
+require a citation line. If an audit trail matters, ask softly and accept ~1 point; never mandate a
+template.
+
+Caveat: n = 172 per row, one run each, binomial standard error ~3.6 points. The 63.4 vs 70-77 gap is
+solid; the ordering among 77.3 / 76.2 / 73.8 is directional only.
+
+Reproduce: `python bench/ab-answer-ids.py --arms "4800/vec" --close <none|soft|strict|free>`, then
+`python bench/ab-rejudge-llm.py --in bench/ab-answer-ids-<close>.json --out bench/ab-rejudge-ids-<close>.json`,
+then `python bench/_clean_rejudge.py --answers bench/ab-answer-ids-<close>.json --rejudge bench/ab-rejudge-ids-<close>.json`
+for the two closing styles that can leave a stray `（`.
+
 ## Reproduce
 
 ```bash
