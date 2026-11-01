@@ -169,6 +169,10 @@ Read this before you trust the numbers.
   answers from **77.3% to 87.2%**, cuts refusals from 27 to 6, and costs nothing on the 30 instances
   that were already correct. Wrong answers rise from 7.0% to 9.3%: a visible guess instead of a silent
   refusal. Permissions gained what every mandated format cost.
+- **A same-night timeline header fixes nothing.** Laying the block's own dates and clock times out in
+  order above the material — no line changed, +190–290 chars — leaves the four "40 minutes" errors wrong
+  and breaks one control. Their evidence is not in the block: the base question says "11/8" and answers
+  correctly, the paraphrases dropped the date. Coverage, not attribution.
 - **Letting the model choose which lines to keep is not worth a second call.** Handing it only its own
   picks (291 chars) scores 67.4%; its picks unioned with the vector block at a 1,600-char cap scores
   69.2%; plain truncation to the same 1,600 chars scores 68.6%. When a pick happened to contain a gold

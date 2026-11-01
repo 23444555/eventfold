@@ -679,6 +679,47 @@ saying which time belongs to which event. It is a very small sample, so treat th
 than a result, but it is the first place in this whole document where the structured layer has a job
 that the vector arm provably cannot do.
 
+## Timeline headers do not fix the last four errors -- they are coverage, not attribution
+
+The four genuine-looking errors were all the same: asked how long an incident lasted, the model answers
+"40 minutes", which is the 11-24 incident's duration, not the one it was asked about. That reads like a
+time-attribution failure, so I built the fix for it: `bench/ab-timeline.py` extracts the date and clock
+time from every line in the block and writes a compressed per-day header above the material, changing
+no line:
+
+```
+【同日时间线（按块内提及的日期与时刻排，未改动材料）】
+- 11-05：21:15 老周：命令张伟立刻回滚限流配置 ｜ 21:25 回滚完成、网关重启完毕
+- 11-08：21:15 老周：下令立刻回滚 ｜ 21:20 肥鱼：执行 git revert ｜ 21:35 系统重启完毕，连接池恢复正常
+- 11-11：09:55 老周：下令肥鱼立刻回滚 ｜ 10:00 肥鱼：执行 git revert ｜ 10:45 一次故障持续约四十分钟
+```
+
+34 instances (the 4 targets + 30 previously-correct controls), same arm, same contract (bestguess),
+same block, header ≈ 190-290 chars:
+
+| | baseline | with header |
+|---|---|---|
+| the 4 "40 minutes" errors | 4 wrong | **4 wrong** |
+| 30 controls | 28 ok, 2 partial | 28 ok, 2 partial, **1 of them broken** |
+
+Zero fixed, one control broken (`Dq0915#v2`, was right, now wrong). The header does not pay for itself.
+
+The diagnosis matters more than the number: **in those four blocks the evidence is not there.** The base
+question — which says "11 月 8 号" — has both `21:20` and `21:35` in its block and answers "15 分钟"
+correctly. The four failures are the *paraphrases*, which dropped "11 月 8 号" and left "那次回滚": their
+blocks contain `11-08 21:15` but not `21:20`/`21:35` (and the CT1 variants lack the "15 分钟" fact
+entirely). Under the bestguess contract the model must answer something, and the nearest candidate is
+the 11-24 recap's "整整 40 分钟". No rendering of the block can fix a question that no longer says which
+incident it means; it is a coverage failure with a confident wrong answer on top.
+
+So I am reclassifying those four: they are paraphrase defects (a dropped disambiguating constraint), not
+model errors. That puts the answer arm at **165/172 = 95.9%** once the question set is fixed, and it
+removes the last piece of evidence that a structured layer has a job in the answer path.
+
+The general lesson, now the third time in this document: before building a renderer, check whether the
+evidence is in the block at all. Every structural layer proposed here — slot timelines, episode chrome,
+same-night headers — was an attempt to fix something the block never contained.
+
 ## Reproduce
 
 ```bash
