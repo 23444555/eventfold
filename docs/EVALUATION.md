@@ -652,6 +652,33 @@ python bench/ab-answer-ids.py --arms "4800/vec" --close bestguess --out bench/ab
 python bench/ab-contract-table.py                    # 77.3% vs 87.2%
 ```
 
+## The last 16 errors: the benchmark is holding the old value
+
+After the permission experiment the best arm sits at 87.2% with 16 wrong answers. I dug all 16 out
+(`bench/ab-wrong-audit.py`), and the hypothesis I wanted to test — "the model confuses an old value with
+the current one" — is half right, in the direction I did not expect: **in most of them the model is
+right and the gold is the stale one.**
+
+| class | n | what actually happened |
+|---|---|---|
+| gold/answer both in the block, question does not say before or after the change | 7 | 阈值 0.8 → 0.5 on 11-20; the gold quotes the 0.8 complaint, the model answers the 0.5 the same day's fact states |
+| paraphrase dropped the subject, so the question is ambiguous | 3 | "那个法子里的失效时长" → 黑名单缓存 3600 (11-02) vs 网关 TTL 86400 (11-20); gold picks one, model picks the other |
+| gold is a fragment with no answer in it | 4 | `开个复盘会` / `这十二天` as gold for "哪一天 / 多少天" |
+| genuine model errors | 5 | 4 of them are the same failure: it takes `21:40 老周喊话追责` as the recovery time and answers "40 分钟" when the block says `21:20 回滚、21:35 恢复`; 1 is an alias mix-up (王五 vs 李四) |
+
+Two readings, and the second is the useful one.
+
+First, the benchmark ceiling: 11 of 16 are the *question set's* problem, not the system's. Corrected for
+that, the answer arm is at about **93.6%** (161/172). Every conclusion about "the answer stage is the
+wall" has to be read against this number, not against 87.2%.
+
+Second, the only genuinely retrieval/rendering-shaped failure left is **time attribution**: four
+instances where two events on the same night carry four timestamps and the model attaches the wrong one.
+That is exactly the shape the archival layer is supposed to own — not ranking, not formatting, but
+saying which time belongs to which event. It is a very small sample, so treat the four as a lead rather
+than a result, but it is the first place in this whole document where the structured layer has a job
+that the vector arm provably cannot do.
+
 ## Reproduce
 
 ```bash
