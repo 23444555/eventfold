@@ -1,0 +1,26 @@
+{
+  "_comment": "Optional slot vocabulary. Facts arrive with free-form slot names; this maps them onto a closed set so episodes are comparable. Anything that matches nothing falls into misc_key.",
+  "canonical": {
+    "device-config": ["设备", "模式", "下行", "速率", "版本", "隔离", "备注"],
+    "incident-network": ["现象", "原因", "处理", "修复", "备注"],
+    "incident-online": ["现象", "频率", "原因", "修复", "备注"],
+    "incident-disk": ["位置", "指标", "现象", "原因", "处理", "修复", "腾出", "备注"],
+    "incident-power": ["支撑", "健康度", "计划", "备注"],
+    "capacity": ["可用", "已用", "预警", "常态", "峰值", "节奏", "备注"],
+    "service-deploy": ["部署", "冷启动", "策略", "窗口", "保留", "日增", "检索", "QPS", "备注"],
+    "note": ["温度", "数量", "功耗", "备注"]
+  },
+  "aliases": {
+    "故障": "现象",
+    "症状": "现象",
+    "报错": "现象",
+    "根因": "原因",
+    "原因分析": "原因",
+    "处置": "处理",
+    "解决": "修复",
+    "修复方式": "修复",
+    "用时": "耗时",
+    "接口QPS": "QPS"
+  },
+  "misc_key": "备注"
+}

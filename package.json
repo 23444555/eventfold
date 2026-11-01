@@ -1,0 +1,34 @@
+{
+  "name": "eventfold",
+  "version": "0.1.0",
+  "description": "Fold a flat fact stream into episodes and render them as a bounded, dated memory block.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/archive.mjs",
+  "exports": {
+    ".": "./src/archive.mjs"
+  },
+  "files": [
+    "src/",
+    "build/",
+    "examples/",
+    "docs/"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build:example": "python build/archive_build.py --facts examples/facts.jsonl --out examples/data/archive.json",
+    "test": "node test/runtime_test.mjs && python test/build_test.py",
+    "test:runtime": "node test/runtime_test.mjs",
+    "test:build": "python test/build_test.py"
+  },
+  "keywords": [
+    "memory",
+    "episodic-memory",
+    "llm",
+    "rag",
+    "retrieval",
+    "long-term-memory"
+  ]
+}

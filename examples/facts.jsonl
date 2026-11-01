@@ -1,0 +1,33 @@
+{"id": 1, "ts": "2026-02-03 09:12", "thread": "家庭网络", "schema": "device-config", "subject": "入户光猫", "text": "把入户光猫改成桥接模式，PPPoE 交给主路由拨号，NAT 只剩一层。", "slots": [{"n": "设备", "v": "入户光猫"}, {"n": "模式", "v": "桥接"}]}
+{"id": 2, "ts": "2026-02-03 09:40", "thread": "家庭网络", "schema": "device-config", "subject": "入户光猫", "text": "桥接后测速下行 940 Mbps，比拨号模式高 60 Mbps。", "slots": [{"n": "下行", "v": "940 Mbps"}]}
+{"id": 3, "ts": "2026-02-05 20:11", "thread": "家庭网络", "schema": "incident-network", "subject": "内网 DNS", "text": "内网设备报 DNS 解析失败，定位是广告过滤列表里误伤了一条 CDN 域名。", "slots": [{"n": "现象", "v": "解析失败"}, {"n": "原因", "v": "过滤列表误伤"}]}
+{"id": 4, "ts": "2026-02-05 20:35", "thread": "家庭网络", "schema": "incident-network", "subject": "内网 DNS", "text": "把误伤域名加入白名单，解析恢复，观察 3 天没有再复发。", "slots": [{"n": "处理", "v": "加白名单"}]}
+{"id": 5, "ts": "2026-02-11 10:02", "thread": "存储", "schema": "capacity", "subject": "备份阵列", "text": "备份阵列 8 块 4T 盘组 RAID6，可用 21.8 TB，已用 13.4 TB。", "slots": [{"n": "可用", "v": "21.8 TB"}, {"n": "已用", "v": "13.4 TB"}]}
+{"id": 6, "ts": "2026-02-11 10:20", "thread": "存储", "schema": "capacity", "subject": "备份阵列", "text": "按每月 400 GB 的增长，容量还剩大约 21 个月。", "slots": [{"n": "预警", "v": "21 个月"}]}
+{"id": 7, "ts": "2026-02-18 22:47", "thread": "存储", "schema": "incident-disk", "subject": "备份阵列", "text": "阵列第 5 块盘报 SMART 重映射扇区数 48，属于临界值。", "slots": [{"n": "位置", "v": "第 5 块"}, {"n": "指标", "v": "重映射 48"}]}
+{"id": 8, "ts": "2026-02-19 15:30", "thread": "存储", "schema": "incident-disk", "subject": "备份阵列", "text": "换上一块同型号 4T 新盘，重建跑了 26 小时完成，没有出现第二个坏块。", "slots": [{"n": "处理", "v": "换盘重建"}, {"n": "耗时", "v": "26 小时"}]}
+{"id": 9, "ts": "2026-02-24 19:05", "thread": "运维", "schema": "service-deploy", "subject": "笔记服务", "text": "笔记服务从裸机迁到容器，数据卷放在备份阵列的独立目录。", "slots": [{"n": "部署", "v": "容器"}]}
+{"id": 10, "ts": "2026-02-24 19:40", "thread": "运维", "schema": "service-deploy", "subject": "笔记服务", "text": "迁移后冷启动从 40 秒降到 6 秒。", "slots": [{"n": "冷启动", "v": "40 秒 → 6 秒"}]}
+{"id": 11, "ts": "2026-03-02 08:15", "thread": "运维", "schema": "incident-online", "subject": "反向代理", "text": "反向代理开始间歇性返回 502，高峰期大约每 10 分钟一次。", "slots": [{"n": "现象", "v": "502"}, {"n": "频率", "v": "每 10 分钟"}]}
+{"id": 12, "ts": "2026-03-02 11:20", "thread": "运维", "schema": "incident-online", "subject": "反向代理", "text": "抓包发现上游 keepalive 连接被对方 60 秒就断开，连接池里全是死连接。", "slots": [{"n": "原因", "v": "keepalive 失配"}]}
+{"id": 13, "ts": "2026-03-02 11:45", "thread": "运维", "schema": "incident-online", "subject": "反向代理", "text": "把 keepalive_timeout 调到 55 秒并缩短连接池存活时间，502 消失。", "slots": [{"n": "修复", "v": "keepalive 55 秒"}]}
+{"id": 14, "ts": "2026-03-09 21:03", "thread": "家庭网络", "schema": "device-config", "subject": "客厅 AP", "text": "客厅 AP 换成支持 6 GHz 的型号，老设备走 2.4 GHz 单独 SSID。", "slots": [{"n": "设备", "v": "双频 AP"}]}
+{"id": 15, "ts": "2026-03-09 21:30", "thread": "家庭网络", "schema": "device-config", "subject": "客厅 AP", "text": "6 GHz 下实测 1.6 Gbps，比原来的 5 GHz 快一倍多。", "slots": [{"n": "速率", "v": "1.6 Gbps"}]}
+{"id": 16, "ts": "2026-03-15 14:22", "thread": "电力", "schema": "incident-power", "subject": "UPS", "text": "市电闪断两次，UPS 支撑了 11 分钟，机柜设备没有掉电。", "slots": [{"n": "支撑", "v": "11 分钟"}]}
+{"id": 17, "ts": "2026-03-15 15:00", "thread": "电力", "schema": "incident-power", "subject": "UPS", "text": "UPS 电池组已用 4 年，自检剩余容量 62%，计划年内更换。", "slots": [{"n": "健康度", "v": "62%"}, {"n": "计划", "v": "年内换电池"}]}
+{"id": 18, "ts": "2026-03-21 16:40", "thread": "运维", "schema": "service-deploy", "subject": "备份任务", "text": "备份从全量每周一次改成增量每天一次、全量每月一次，窗口从 5 小时缩到 40 分钟。", "slots": [{"n": "策略", "v": "增量日备"}, {"n": "窗口", "v": "40 分钟"}]}
+{"id": 19, "ts": "2026-03-28 09:05", "thread": "存储", "schema": "capacity", "subject": "备份阵列", "text": "阵列已用涨到 15.1 TB，增速比预估快，改成每月复查一次。", "slots": [{"n": "已用", "v": "15.1 TB"}, {"n": "节奏", "v": "每月复查"}]}
+{"id": 20, "ts": "2026-04-04 20:18", "thread": "运维", "schema": "incident-online", "subject": "证书", "text": "泛域名证书到期当天才被发现，原因是续期脚本的 cron 被误删。", "slots": [{"n": "现象", "v": "证书过期"}, {"n": "原因", "v": "cron 被误删"}]}
+{"id": 21, "ts": "2026-04-04 21:00", "thread": "运维", "schema": "incident-online", "subject": "证书", "text": "补回 cron 并加了到期前 21 天的提醒，续期改成就地 reload 不重启服务。", "slots": [{"n": "修复", "v": "21 天提醒"}]}
+{"id": 22, "ts": "2026-04-12 11:30", "thread": "运维", "schema": "service-deploy", "subject": "日志", "text": "日志统一收集到本机，保留 14 天，单日写入约 1.2 GB。", "slots": [{"n": "保留", "v": "14 天"}, {"n": "日增", "v": "1.2 GB"}]}
+{"id": 23, "ts": "2026-04-19 10:12", "thread": "家庭网络", "schema": "device-config", "subject": "主路由", "text": "主路由固件升级到 6.4，修了 DHCP 租约不释放的问题。", "slots": [{"n": "版本", "v": "6.4"}]}
+{"id": 24, "ts": "2026-04-25 19:47", "thread": "电力", "schema": "capacity", "subject": "机柜功耗", "text": "机柜日常功耗 210 W，开满虚拟机到 330 W。", "slots": [{"n": "常态", "v": "210 W"}, {"n": "峰值", "v": "330 W"}]}
+{"id": 25, "ts": "2026-05-02 08:50", "thread": "存储", "schema": "incident-disk", "subject": "系统盘", "text": "系统盘写满导致服务全部 500，根因是日志轮转配置漏了一个目录。", "slots": [{"n": "现象", "v": "磁盘写满"}, {"n": "原因", "v": "轮转漏配"}]}
+{"id": 26, "ts": "2026-05-02 09:30", "thread": "存储", "schema": "incident-disk", "subject": "系统盘", "text": "补齐轮转规则并加了 85% 使用率告警，清出 40 GB。", "slots": [{"n": "修复", "v": "85% 告警"}, {"n": "腾出", "v": "40 GB"}]}
+{"id": 27, "ts": "2026-05-10 15:05", "thread": "运维", "schema": "service-deploy", "subject": "笔记服务", "text": "笔记服务的搜索换成全文索引，检索从 900 毫秒降到 60 毫秒。", "slots": [{"n": "检索", "v": "900 ms → 60 ms"}]}
+{"id": 28, "ts": "2026-05-17 21:20", "thread": "家庭网络", "schema": "device-config", "subject": "访客网络", "text": "给访客单独划一个 VLAN，只放行 443 出网。", "slots": [{"n": "隔离", "v": "VLAN"}]}
+{"id": 29, "ts": "2026-05-24 13:40", "thread": "运维", "schema": "incident-online", "subject": "反向代理", "text": "反向代理单 worker 被打满，QPS 到 1,800 就排队，改成 4 worker 后到 6,200。", "slots": [{"n": "QPS", "v": "1,800 → 6,200"}]}
+{"id": 30, "ts": "2026-06-01 09:00", "thread": "其他", "schema": "note", "subject": "杂项", "text": "给机柜加了一块温湿度传感器，夏天最高 31 度。", "slots": [{"n": "温度", "v": "31 度"}]}
+{"id": 31, "ts": "2026-06-01 09:30", "thread": "其他", "schema": "note", "subject": "杂项", "text": "换了带理线的机柜挡板，走线整洁了很多。", "slots": []}
+{"id": 32, "ts": "2026-06-09 10:15", "thread": "其他", "schema": "note", "subject": "杂项", "text": "整理了一份设备清单表格，记录了 7 台设备的型号和购买年份。", "slots": [{"n": "数量", "v": "7 台"}]}
+{"id": 33, "ts": "2026-06-20 16:20", "thread": "其他", "schema": "note", "subject": "杂项", "text": "把旧笔记本装成跳板机，只用来 SSH，功耗 12 W。", "slots": [{"n": "功耗", "v": "12 W"}]}
