@@ -567,6 +567,29 @@ So: fact ids are a format improvement, not a routing improvement. The model read
 accurate when the material is there; it does not know better than the retriever which lines matter,
 and it does know how to point at a line when asked.
 
+### Attention hint: reordering is free and worthless; one prompt clause is worth 7 points
+
+If selection cannot be trusted as a *filter*, maybe it works as an *attention cue*: show the whole
+material, but put the picked lines first. Same 172 instances, same material (4,789 chars, 117 lines),
+nothing deleted.
+
+| material | chars | answer prompt | ok+partial | abstained |
+|---|---|---|---|---|
+| everything, retriever order | 4,797 | single-stage (ids baseline) | **77.3%** | 27 |
+| everything, picked lines moved to the front | 4,789 | identical to above | 76.2% | 28 |
+| everything, picked lines moved to the front | 4,789 | two-stage ("a short passage of labelled material") | 69.8% | 42 |
+
+Reordering costs 1.1 points, which is noise — **the cue does nothing**. The retriever's own order is
+already as good an attention signal as the model's picks.
+
+The third row is the accidentally interesting one. It is the same material and the same picks as the
+second row, and the only difference is the system prompt: the two-stage prompt says "你在读**一小段**
+带编号的记忆材料" and drops the line "每行形如 [F1234] 内容". That cost **7.5 points and 14 extra
+abstentions** on 117 lines of material. A one-clause description of the material is worth more than
+every routing intervention tried in this document — the same lesson as the +14 from fact ids, from the
+other direction: what the prompt says about the *shape* of the material changes answers; what we do
+about the *order* of it does not.
+
 Reproduce:
 
 ```

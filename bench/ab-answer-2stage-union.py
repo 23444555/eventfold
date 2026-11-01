@@ -25,7 +25,8 @@ ts = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(ts)
 ids_mod = ts.ids_mod
 
-SYS_ANS = ts.SYS_ANS
+SYS_ANS = ts.SYS_ANS  # 两段式的第二段提示：「一小段材料」
+SYS_ANS_FULL = ids_mod.SYS_NONE  # 单段基线的提示：与 ab-answer-ids.py --close none 完全一致
 
 
 def main():
@@ -41,8 +42,11 @@ def main():
     ap.add_argument("--conc", type=int, default=12)
     ap.add_argument("--no-picks", action="store_true",
                     help="对照：不要自选行，只把向量块截到同一个 cap2（隔离「截断」与「自选」两件事）")
+    ap.add_argument("--sys", default="full", choices=["full", "two"],
+                    help="答题段提示：full=与单段基线逐字一致（只差材料顺序），two=两段式的「一小段材料」")
     ap.add_argument("--out-suffix", default="")
     args = ap.parse_args()
+    sys_ans = SYS_ANS_FULL if args.sys == "full" else SYS_ANS
 
     key = ids_mod.load_key()
     prev = json.load(open(args.two_stage, encoding="utf-8"))
@@ -96,7 +100,7 @@ def main():
     def stage2(j):
         body = "\n".join(f"- [F{fid}] {line}" if fid else f"- {line}" for fid, line in j["material"])
         user = f"【材料】\n{body}\n\n【问题】{j['q']}\n\n【回答】"
-        return ts.call_raw(args.base, key, args.model, SYS_ANS, user, max_tokens=80)
+        return ts.call_raw(args.base, key, args.model, sys_ans, user, max_tokens=80)
 
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=args.conc) as ex:

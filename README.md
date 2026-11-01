@@ -166,7 +166,12 @@ Read this before you trust the numbers.
 - **Letting the model choose which lines to keep is not worth a second call.** Handing it only its own
   picks (291 chars) scores 67.4%; its picks unioned with the vector block at a 1,600-char cap scores
   69.2%; plain truncation to the same 1,600 chars scores 68.6%. When a pick happened to contain a gold
-  leg it scored 78.5% — i.e. the model reads well but does not route better than the retriever.
+  leg it scored 78.5% — i.e. the model reads well but does not route better than the retriever. Using
+  its picks as an attention cue instead of a filter (same material, picked lines moved to the front)
+  gives 76.2% against 77.3% — a wash.
+- **What the prompt says about the material's shape is worth more than any routing trick.** The same
+  material and the same picks, with a prompt that calls 117 lines "a short passage" and drops the line
+  describing the `[F1234]` prefix, scores 69.8% instead of 76.2% and abstains 42 times instead of 28.
 - Coverage is mechanical (does the block contain every fact the answer needs) and answers are
   model-judged; both are reproducible with `python bench/gen-variants.py`, `node bench/ab-gen.mjs`
   `--variants bench/variants-v4.json`, `python bench/ab-cap.py`, `python bench/ab-answer.py`,
