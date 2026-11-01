@@ -164,7 +164,9 @@ Read this before you trust the numbers.
   **43.8%**, `4800/vec` **46.4%**, `4800/ep` **35.7%**. Recall says 79.5% for that arm, answers say
   46.4%, and four times the context buys 2.6 points. Even with **every** needed fact in the block only
   53–60% come out right; retrieval explains the 21% → 60% climb, the rest is lost after retrieval.
-  Adding a BM25 arm (hybrid) is a tie at both levels.
+  Adding a BM25 arm (hybrid) is a tie at both levels. A model judge over the same 560 answers puts it
+  at **50–56%** (ok+partial), and a quarter of the «rewrites» in the set turn out to ask a different
+  question — `docs/EVALUATION.md` has both corrections.
 - The A/B is mechanical (does the block contain every fact the answer needs) — it measures evidence
   recall, not answer quality — and is reproducible with `node bench/ab-gen.mjs` +
   `python bench/ab-arms.py` + `python bench/ab-cap.py` + `python bench/ab-answer.py`.

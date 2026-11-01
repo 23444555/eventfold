@@ -389,6 +389,53 @@ names and domain terms, so there is no lexical hook for either retriever to find
 The remaining lever for that is query expansion — embed a hypothetical answer instead of the question —
 not more context, not more structure, and not a better renderer.
 
+## Are the rewrites even the same question?
+
+Every variant in `bench/ab-gen.json` is a rewrite of a base question, and it is scored against the
+base question's required facts. One bad rewrite is therefore one free miss. I had a model label all
+68 rewrites (base question + base answer + rewrite): **35 same (51%), 16 partial (24%), 17 different
+(25%)**.
+
+| Group | Instances | Full recall | Answered (model judge, ok+partial) |
+|---|---|---|---|
+| base | 44 | 70% | 75% |
+| same rewrite | 35 | 80% | 54% |
+| partial rewrite | 16 | 75% | 37% |
+| different question | 17 | 58% | 23% |
+
+Two things fall out.
+
+1. **Retrieval is not what breaks on rewrites.** Genuine rewrites score *higher* on evidence
+   coverage than the base questions (80% vs 70%). The collapse I reported earlier was mostly a
+   dataset artifact: a quarter of the "rewrites" ask about something else (one asks who ran the
+   rollback, the gold is the 15-minute duration), and a further quarter only partly overlap.
+2. **Answering is still a real weakness.** Same question, same facts, 21 points worse (75% to 54%).
+   The material is full of names the rewrite deliberately removed, and the model does not connect
+   them.
+
+### Judging, again
+
+Mechanical judging was both too strict (some golds are pointers like `06:11-01 09:06`) and too
+generous (a substring hit counted as right). Same 560 answers, model judge: strict `ok`
+33.9--35.7%, `ok+partial` **50.0--56.2%** by budget. The spread between judges (~9 points) is larger
+than the effect of doubling the budget, so the judge belongs in the table, not in a footnote.
+
+### Query expansion (HyDE), offline
+
+Rewrites drop exactly the words both the embedder and BM25 key on, so the obvious fix is to search
+with an invented answer rather than the question. 112 generations (8.6k prompt tokens), three
+rankings over the same 1,067 facts:
+
+| ranking | median gold rank | top-5 | top-20 | median on rewrites |
+|---|---|---|---|---|
+| the question | 6 | 46.4% | 68.8% | 14 |
+| the hypothetical answer | 5 | 51.8% | 75.9% | 10 |
+| RRF(question, hypothetical) | 5 | 53.6% | 75.9% | 9 |
+
+Real but small: +7 points at top-20, and it does not touch the deep tail (a third of the missing
+legs rank past 200 either way). One extra model call per query on the hot path is not worth seven
+points at this size.
+
 ## Reproduce
 
 ```bash
