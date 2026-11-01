@@ -31,6 +31,7 @@
     "bench:answer:v4": "python bench/ab-answer.py --gen bench/ab-gen-v4.json --blocks bench/ab-cap-blocks-v4.json --out bench/ab-answer-v4.json --arms 1200/vec,4800/vec,4800/hybrid,4800/sib25,4800/ep",
     "bench:judge": "python bench/ab-rejudge-llm.py",
     "bench:ids": "python bench/ab-answer-ids.py --arms \"4800/vec\" --close none",
+    "bench:2stage": "python bench/ab-answer-2stage.py --arms \"4800/vec\" --topk 12 --cap2 1600",
     "test": "node test/runtime_test.mjs && python test/build_test.py",
     "test:runtime": "node test/runtime_test.mjs",
     "test:build": "python test/build_test.py"

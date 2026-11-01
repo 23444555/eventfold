@@ -163,6 +163,10 @@ Read this before you trust the numbers.
   20% to 16% (172 instances, same judge, same material). Requiring provenance then taxes it: a soft ask
   gives 76.2%, a mandated template 73.8%, mandated free wording 70.3%. Labels stay in the format;
   citation is a preference, not a rule.
+- **Letting the model choose which lines to keep is not worth a second call.** Handing it only its own
+  picks (291 chars) scores 67.4%; its picks unioned with the vector block at a 1,600-char cap scores
+  69.2%; plain truncation to the same 1,600 chars scores 68.6%. When a pick happened to contain a gold
+  leg it scored 78.5% — i.e. the model reads well but does not route better than the retriever.
 - Coverage is mechanical (does the block contain every fact the answer needs) and answers are
   model-judged; both are reproducible with `python bench/gen-variants.py`, `node bench/ab-gen.mjs`
   `--variants bench/variants-v4.json`, `python bench/ab-cap.py`, `python bench/ab-answer.py`,

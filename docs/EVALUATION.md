@@ -540,6 +540,42 @@ Reproduce: `python bench/ab-answer-ids.py --arms "4800/vec" --close <none|soft|s
 then `python bench/_clean_rejudge.py --answers bench/ab-answer-ids-<close>.json --rejudge bench/ab-rejudge-ids-<close>.json`
 for the two closing styles that can leave a stray `（`.
 
+## Letting the model pick first (two-stage): no gain over truncation
+
+The natural companion to fact ids is to let the model *use* them: stage one shows the labelled
+material and asks only for the ids worth reading, stage two answers from those lines alone. 172
+instances, arm `4800/vec`, same judge.
+
+| material given to the answerer | chars | ok+partial | abstained |
+|---|---|---|---|
+| everything (single stage, no citation asked) | 4,797 | **77.3%** | 16% |
+| truncated to 1,600 chars (control) | 1,572 | 68.6% | 24% |
+| its own picks, unioned with the vector block, capped at 1,600 | 1,572 | 69.2% | 23% |
+| its own picks only | 291 | 67.4% | 22% |
+
+Stage one picks well enough to be useful on its own: 78% of instances had at least one gold leg among
+its picks, and **when the pick contained a gold leg the answerer scored 78.5%** — the same as handing
+it everything. The loss is entirely selection recall (22% of instances lose the evidence before the
+answerer sees it) plus the smaller material.
+
+But the control kills the idea: **truncating the vector block to the same 1,600 characters scores
+68.6%, and letting the model choose what goes in that budget scores 69.2%.** Choosing costs an extra
+model call and buys 0.6 points, which is noise at n = 172. Its selection recall (78%) is no better
+than plain vector coverage at 4,800 (80.8%), so all the second stage adds is another chance to fail.
+
+So: fact ids are a format improvement, not a routing improvement. The model reading the material is
+accurate when the material is there; it does not know better than the retriever which lines matter,
+and it does know how to point at a line when asked.
+
+Reproduce:
+
+```
+python bench/ab-answer-2stage.py --arms "4800/vec" --topk 12 --cap2 1600
+python bench/ab-answer-2stage-union.py --cap2 1600                  # picks ∪ vector block
+python bench/ab-answer-2stage-union.py --cap2 1600 --no-picks --out bench/ab-answer-capcontrol.json
+python bench/ab-rejudge-llm.py --in bench/ab-answer-2stage.json --out bench/ab-rejudge-2stage.json
+```
+
 ## Reproduce
 
 ```bash
