@@ -32,6 +32,7 @@
     "bench:judge": "python bench/ab-rejudge-llm.py",
     "bench:ids": "python bench/ab-answer-ids.py --arms \"4800/vec\" --close none",
     "bench:2stage": "python bench/ab-answer-2stage.py --arms \"4800/vec\" --topk 12 --cap2 1600",
+    "bench:contract": "python bench/ab-answer-ids.py --arms \"4800/vec\" --close bestguess --out bench/ab-answer-bg.json",
     "test": "node test/runtime_test.mjs && python test/build_test.py",
     "test:runtime": "node test/runtime_test.mjs",
     "test:build": "python test/build_test.py"

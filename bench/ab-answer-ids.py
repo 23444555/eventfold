@@ -45,6 +45,13 @@ SYS_FREE = ("你在读一份带编号的记忆材料，每行形如 [F1234] 内�
 SYS_SOFT = ("你在读一份带编号的记忆材料，每行形如 [F1234] 内容。只根据材料回答，不超过 20 字。"
             "材料里没有这条信息就只回「不知道」。"
             "如果你觉得自然，可以顺带提一句你依据的是材料里哪几条；不提也可以，怎么写都行。")
+# 许可式（不是八股）：允许推算/换算，允许措辞不对应，只有完全没相关句子才弃答
+SYS_DERIVE = ("你在读一份带编号的记忆材料，每行形如 [F1234] 内容。只根据材料回答，不超过 20 字。"
+              "材料里的句子可能没有直接写出答案，但能据此算出来、比出来、或看出结论时，就作答。"
+              "只有当材料里完全没有相关句子时才回「不知道」。")
+SYS_BESTGUESS = ("你在读一份带编号的记忆材料，每行形如 [F1234] 内容。只根据材料回答，不超过 20 字。"
+                 "只要材料里有和问题相关的句子，就给出最可能的答案——措辞不同、需要换算、需要取某个数字，"
+                 "都照答；只有当材料里完全没有相关句子时才回「不知道」。")
 SYS = SYS_STRICT
 
 CITE_RE = re.compile(r"(?:依据|来源|出处)\s*[:：]?\s*((?:F\d+[\s,，、]*)+)", re.I)
@@ -135,14 +142,16 @@ def main():
     ap.add_argument("--model", default="deepseek-flash")
     ap.add_argument("--conc", type=int, default=12)
     ap.add_argument("--limit", type=int, default=0)
-    ap.add_argument("--close", default="strict", choices=["strict", "loose", "none", "free", "soft"],
+    ap.add_argument("--close", default="strict", choices=["strict", "loose", "none", "free", "soft",
+                                                         "derive", "bestguess"],
                     help="收口方式：strict=「依据 F1,F2」最多 3 条；loose=末行只写编号；free=强制说依据但自由措辞；"
                          "soft=可提可不提；none=不提引用")
     args = ap.parse_args()
 
     global SYS
     SYS = {"strict": SYS_STRICT, "loose": SYS_LOOSE, "none": SYS_NONE,
-           "free": SYS_FREE, "soft": SYS_SOFT}[args.close]
+           "free": SYS_FREE, "soft": SYS_SOFT,
+           "derive": SYS_DERIVE, "bestguess": SYS_BESTGUESS}[args.close]
     key = load_key()
     gen = json.load(open(args.gen, encoding="utf-8"))
     blocks = json.load(open(args.blocks, encoding="utf-8"))

@@ -163,6 +163,12 @@ Read this before you trust the numbers.
   20% to 16% (172 instances, same judge, same material). Requiring provenance then taxes it: a soft ask
   gives 76.2%, a mandated template 73.8%, mandated free wording 70.3%. Labels stay in the format;
   citation is a preference, not a rule.
+- **Telling the model what it may do with the material is worth another 10 points.** The 27 refusals in
+  the best arm (16%) were not missing evidence: 19 had every gold fact in the block. Permitting it to
+  compute, compare, or read past the wording — "only say 不知道 when no sentence is relevant" — lifts
+  answers from **77.3% to 87.2%**, cuts refusals from 27 to 6, and costs nothing on the 30 instances
+  that were already correct. Wrong answers rise from 7.0% to 9.3%: a visible guess instead of a silent
+  refusal. Permissions gained what every mandated format cost.
 - **Letting the model choose which lines to keep is not worth a second call.** Handing it only its own
   picks (291 chars) scores 67.4%; its picks unioned with the vector block at a 1,600-char cap scores
   69.2%; plain truncation to the same 1,600 chars scores 68.6%. When a pick happened to contain a gold

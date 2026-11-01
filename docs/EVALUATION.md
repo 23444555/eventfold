@@ -599,6 +599,59 @@ python bench/ab-answer-2stage-union.py --cap2 1600 --no-picks --out bench/ab-ans
 python bench/ab-rejudge-llm.py --in bench/ab-answer-2stage.json --out bench/ab-rejudge-2stage.json
 ```
 
+## Why it says "不知道": the reading contract was too strict
+
+The 27 abstentions in the best arm (16% of 172) looked like a reluctance problem, so I audited them
+first. Nineteen of the 27 had **full coverage** — every gold leg was sitting in the block — and the
+model still refused. Eight were genuinely missing evidence, where refusing is correct.
+
+So I re-asked the same 27, same material, and varied only what the prompt *permits*:
+
+| contract | what it adds | targets (27 refusals) | control (30 already correct) |
+|---|---|---|---|
+| `base` | nothing (reproduction) | 2/27 correct, 25 still refuse | 30/30 correct, 0 refuse |
+| `derive` | "you may compute, compare, or conclude from it" | 13/27 correct, 7 wrong | 30/30 correct, 0 refuse |
+| `bestguess` | "if any sentence is relevant, answer with the closest reading" | **15/27 correct**, 7 wrong | 30/30 correct, 0 refuse |
+
+Both permissions convert two thirds of the refusals into attempts and **cost nothing on the instances
+the model already answered** (30/30 in both). Both produce the same 7 wrong answers — `bestguess` just
+converts two more of the remaining refusals into correct ones.
+
+Run over the whole set (172 instances, arm `4800/vec`, same judge, no extra calls, no retrieval change):
+
+| contract | ok+partial | abstained | wrong |
+|---|---|---|---|
+| fact ids, "say 不知道 if not stated" | 77.3% | 27 (16%) | 12 (7%) |
+| same + permission to derive / paraphrase | **87.2%** | 6 (3%) | 16 (9%) |
+
+The permission is worth **+9.9 points** — more than every retrieval experiment in this document
+combined, and more than the ids themselves. It lands almost entirely on the paraphrase half: variant
+`single` 21/32 → 26/32, `跨篇` 0/3 → 2/3, `跨篇·近似` 0/2 → 2/2, `time` 9/15 → 11/15, `alias` 12/17 →
+14/17. Base questions were already at ceiling and stay there.
+
+Read carefully, because this is a trade and not a free win: the refusal rate collapses from 16% to 3.5%
+and the wrong-answer rate rises from 7.0% to 9.3%. A system that answers "不知道" when the fact is in
+front of it fails silently; a system that guesses fails visibly. I would take the permission — but only
+with the `不想猜` escape hatch still in the prompt, which is why six refusals survive (the arithmetic
+case whose evidence is a timestamp pair, the "how many days" case that needs a subtraction across two
+dates, and four whose referent the paraphrase dropped entirely). Those six are honest refusals: the
+material really does not answer them directly.
+
+The rule this leaves behind: **tell the model what it may do with the material, not what it must
+produce.** Every mandatory format in the previous section cost points; every permission here gained
+them, and the one prohibition that remains ("if nothing relevant, say 不知道") is the thing that keeps
+it honest.
+
+Reproduce:
+
+```
+python bench/ab-abstain-audit.py --preview 25        # the 27 refusals, split by coverage
+python bench/ab-abstain-retry.py --control 30        # base / derive / bestguess on those 27 + 30 controls
+python bench/ab-rejudge-llm.py --in bench/ab-abstain-retry.json --out bench/ab-rejudge-retry.json
+python bench/ab-answer-ids.py --arms "4800/vec" --close bestguess --out bench/ab-answer-bg.json
+python bench/ab-contract-table.py                    # 77.3% vs 87.2%
+```
+
 ## Reproduce
 
 ```bash
