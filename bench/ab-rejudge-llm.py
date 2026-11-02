@@ -101,7 +101,11 @@ def main():
     print("\n## 每臂：机械判分 vs 模型判分（ok+partial 都算对）\n")
     print("| 臂 | 机械 ok | 模型 ok | 模型 ok+partial | 模型 wrong | 模型 abstain |")
     print("|---|---|---|---|---|---|")
-    for arm in ("1200/vec", "2400/vec", "4800/vec", "4800/sib25", "4800/ep"):
+    order = []
+    for r in res:
+        if r["arm"] not in order:
+            order.append(r["arm"])
+    for arm in order:
         c = by_arm[arm]
         n = sum(c.values())
         mech = sum(1 for r in res if r["arm"] == arm and r["mech"] == "ok")
