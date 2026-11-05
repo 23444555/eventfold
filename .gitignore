@@ -7,3 +7,4 @@ bench/_gate-blocks.json
 bench/ab-cap-blocks.json
 __pycache__/
 *.pyc
+examples/data/
