@@ -1,0 +1,29 @@
+{
+  "name": "fold-guard",
+  "version": "0.1.0",
+  "description": "Three fail-closed checks for LLM-written memory digests: structure, provenance, subject.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "memory",
+    "llm",
+    "guardrails",
+    "provenance",
+    "summarization"
+  ]
+}
