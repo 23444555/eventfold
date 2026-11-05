@@ -78,6 +78,35 @@ python build/archive_build.py --facts facts.jsonl --out data/archive.json \
 node test/runtime_test.mjs                 # sanity-check the result
 ```
 
+## Getting facts out of a memory backend
+
+The builder reads JSONL; it does not talk to any store. One adapter ships in the box:
+
+```bash
+# Hindsight (any HTTP endpoint that speaks /banks/<bank>/memories/list)
+python build/from_hindsight.py --bank qq-live --thread-from context --subject-from thread \
+    --ts-from-text --year 2026 --out facts.jsonl
+
+python build/archive_build.py --facts facts.jsonl --out data/archive.json
+```
+
+The mapping is deliberately dumb — it moves fields, it does not interpret them:
+
+| Hindsight | eventfold |
+|---|---|
+| `text` | `text` |
+| `[MM-DD HH:MM]` in text (`--ts-from-text`) or `occurred_start` | `ts` |
+| `fact_type` | `schema` |
+| `context` / tags / document id (`--thread-from`) | `thread` |
+| first entity / speaker / context (`--subject-from`) | `subject` |
+
+For a chat log, `--thread-from context --subject-from thread` gives one event per day, which is
+what a "what happened that week" question needs. For a support-ticket stream, leave the defaults
+and let `schema` + `subject` do the grouping.
+
+Measured on a 100-fact chat-log export: 10 day-events, a question about one wedding's cash
+reconciliation pulled 2.4 KB of dated block out of a 114 KB archive.
+
 ## What the builder does to your facts
 
 Four deterministic passes, no LLM:

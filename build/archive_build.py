@@ -144,7 +144,7 @@ def group_events(facts: list[dict], guard_days: int, max_facts: int) -> list[dic
                 "id": "",  # filled later
                 "schema": f["schema"],
                 "thread": f["thread"],
-                "title": f"{f['thread']}：{subj}" if f["thread"] else subj,
+                "title": subj if (not f["thread"] or subj == f["thread"]) else f"{f['thread']}：{subj}",
                 "status": "open",
                 "first": f["d"],
                 "last": f["d"],
