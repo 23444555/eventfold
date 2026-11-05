@@ -1,0 +1,50 @@
+[
+  {
+    "id": "f-2026-10-24-layers",
+    "created_at": "2026-10-24",
+    "fact_type": "world",
+    "text": "长短期记忆分层：上下文当短期，记忆库当长期，压缩前先落库。"
+  },
+  {
+    "id": "f-2026-10-25-arch",
+    "created_at": "2026-10-25",
+    "fact_type": "world",
+    "text": "记忆库架构定稿：原话层 qq-live 走 chunks 模式，事实层靠离线批量抽取，约 0.9 元/千条消息。"
+  },
+  {
+    "id": "f-2026-10-25-card",
+    "created_at": "2026-10-25",
+    "fact_type": "world",
+    "text": "人格卡从 5525 字符精简到 2186 字符，核心层 1987 字符，哈希 06a96f2e48cb93e6。"
+  },
+  {
+    "id": "f-2026-10-26-union",
+    "created_at": "2026-10-26",
+    "fact_type": "world",
+    "text": "双路 union（原问句 + 规则改写）在 bench-3k 上让 hit@3 从 88% 提到 91%。"
+  },
+  {
+    "id": "f-2026-10-27-accept",
+    "created_at": "2026-10-27",
+    "fact_type": "world",
+    "text": "桥接挂真实 QQ 一周验收四件事：消息进场、攒够 150 条触发沉淀、第二天能搜到原话、私聊不串群。"
+  },
+  {
+    "id": "f-2026-10-28-plugin",
+    "created_at": "2026-10-28",
+    "fact_type": "world",
+    "text": "DSH 插件装法：junction 指向源码目录，profile 的 package.json 加 link 依赖，再在 cordis.patch.yml 插一层。"
+  },
+  {
+    "id": "f-2026-11-02-bm25",
+    "created_at": "2026-11-02",
+    "fact_type": "world",
+    "text": "中文 BM25 实测恒为 0：native 分词器把整句当一个 token，所以改成字符 n-gram 兜底。"
+  },
+  {
+    "id": "f-2026-11-04-quote",
+    "created_at": "2026-11-04",
+    "fact_type": "world",
+    "text": "引文定位：每条事实带 source_quote，读的时候逐字核对该子串是否在原文里。"
+  }
+]

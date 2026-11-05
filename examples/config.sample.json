@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "llm": {
+    "model": "deepseek-chat",
+    "base_url": "https://api.deepseek.com",
+    "key_env": "DEEPSEEK_API_KEY",
+    "timeout_ms": 90000,
+    "max_output_tokens": 2000,
+    "pricing": { "in_per_m": 0.27, "out_per_m": 1.1 }
+  },
+  "budget": {
+    "daily_rmb": 0.2,
+    "min_new_items": 1
+  },
+  "topics": [
+    {
+      "id": "hardware",
+      "title": "硬件与工位",
+      "file": "hardware.md",
+      "source": "archive",
+      "archive": "events.sample.json",
+      "owner_only": true,
+      "filter": {
+        "schemas": ["purchase-hardware"],
+        "subjects": ["显卡", "机箱", "测试机", "显示器", "键盘"]
+      },
+      "window_days": 365,
+      "max_items": 15,
+      "max_chars": 1200,
+      "section_hint": "现在有什么 / 出过什么问题 / 想买什么",
+      "keywords": ["显卡", "机箱", "显示器", "键盘", "服务器", "A100", "4090", "硬件", "算力"]
+    },
+    {
+      "id": "memory_system",
+      "title": "检索与记忆系统",
+      "file": "memory-system.md",
+      "source": "facts",
+      "facts": "facts.sample.json",
+      "fact_types": ["world"],
+      "window_days": 400,
+      "max_items": 20,
+      "max_chars": 1500,
+      "section_hint": "现在的架构 / 踩过的坑 / 待跟进",
+      "keywords": ["记忆", "检索", "召回", "BM25", "分词", "引文", "阈值", "重排"]
+    }
+  ]
+}

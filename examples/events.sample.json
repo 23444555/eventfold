@@ -1,0 +1,98 @@
+[
+  {
+    "id": "ev-2026-09-01-gpu",
+    "date": "2026-09-01",
+    "schema": "purchase-hardware",
+    "subject": "显卡",
+    "summary": "用户 2026-09-01 换了一张 4070 Ti Super，没钱买显示器，用旧屏幕凑合了半个月。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-09-01-case",
+    "date": "2026-09-01",
+    "schema": "purchase-hardware",
+    "subject": "机箱",
+    "summary": "用户机箱因为静电火花快要报废，D 盘也快要冒烟，只能用旧机箱先顶着。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-11-03-cloud",
+    "date": "2026-11-03",
+    "schema": "purchase-hardware",
+    "subject": "测试机",
+    "summary": "用户租了一台带 A100 显卡的云服务器，显存 80G，一个月工资，把量化模型和记忆库搬了上去。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-09-20-promise",
+    "date": "2026-09-20",
+    "schema": "purchase-hardware",
+    "subject": "显卡",
+    "summary": "用户说 4070 Ti Super 先顶着，明年一定换 4090。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-10-26-keyboard-other",
+    "date": "2026-10-26",
+    "schema": "purchase-hardware",
+    "subject": "键盘",
+    "summary": "李四买了静电容键盘，花了 2800，说手感比 HHKB 好。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-10-26-gpu-other",
+    "date": "2026-10-26",
+    "schema": "purchase-hardware",
+    "subject": "显卡",
+    "summary": "张伟上周换了 4090，跑分比之前高 40%，李总批的预算。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-10-27-ttl-other",
+    "date": "2026-10-27",
+    "schema": "config-change",
+    "subject": "缓存 TTL",
+    "summary": "老周把网关缓存 TTL 从 600 调到 3600，说压测通过后再上线。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-10-20-threshold-other",
+    "date": "2026-10-20",
+    "schema": "config-change",
+    "subject": "相似度阈值",
+    "summary": "李四把 retrieval_threshold 定在 0.5，理由是召回率优先。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-10-24-layers",
+    "date": "2026-10-24",
+    "schema": "general",
+    "subject": "记忆分层",
+    "summary": "用户决定长短期记忆分层：上下文当短期，记忆库当长期，压缩前先落库。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-10-25-arch",
+    "date": "2026-10-25",
+    "schema": "general",
+    "subject": "记忆库架构",
+    "summary": "记忆库架构定稿：原话层走 chunks 模式零 LLM 成本，事实层离线批量抽取，约 0.9 元/千条消息。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-10-25-card",
+    "date": "2026-10-25",
+    "schema": "general",
+    "subject": "人格卡",
+    "summary": "用户把人格卡从 5525 字符精简到 2186 字符，示范化 10 组问答，档案迁到阅历层。",
+    "source": "chat"
+  },
+  {
+    "id": "ev-2026-10-27-accept",
+    "date": "2026-10-27",
+    "schema": "general",
+    "subject": "验收",
+    "summary": "桥接挂真实 QQ 一周要验收四件事：消息进场、攒够 150 条触发沉淀、第二天能搜到原话、私聊不串群。",
+    "source": "chat"
+  }
+]
