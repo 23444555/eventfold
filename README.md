@@ -6,6 +6,14 @@
 > [@23444555](https://github.com/23444555) — who reviews the result and owns the decision,
 > and does not write the code. See [`MAINTAINERS.md`](MAINTAINERS.md).
 
+> **Chinese first (中文优先).** Chinese is the supported language: the routing index is built
+> from Chinese character bigrams, the subject guard matches Chinese names against Chinese
+> owner words, the builder parses Chinese date phrasing, and every benchmark number here was
+> measured on Chinese corpora. English is **beta**: `MEMORY_ARCHIVE_LANG=en` gives routing and
+> date parsing, and `fold-guard` has an English preset — enough to run, not enough to promise
+> parity. The rendered block scaffolding is still Chinese. See
+> [Language support](#language-support) and [`docs/LANGUAGE.md`](packages/eventfold/docs/LANGUAGE.md).
+
 A **fold layer** that sits on top of a memory backend (a vector store, a fact table, a
 conversation log) and gives an LLM two things it can actually trust:
 
@@ -104,6 +112,31 @@ npm run build:example -w eventfold        # facts → archive.json → block
 The Python builder (`packages/eventfold/build/`) does four deterministic passes —
 group, fold, split, emit — and never calls an LLM. The runtime is one file,
 `packages/eventfold/src/archive.mjs`.
+
+## Language support
+
+**Chinese first, English beta.** Every layer of the fold was written against Chinese text, so
+the default path stays Chinese. English is not promised — but it is not a dead end either: the
+runtime takes a language pack, and the two guards that used to be Chinese-only now take
+parameters.
+
+| Layer | Default (Chinese) | English |
+|---|---|---|
+| `routeEvents` | character-bigram IDF, dates like `11月5日` | `MEMORY_ARCHIVE_LANG=en` → word + word-pair IDF, `Nov 5` / `11/5` / `2026-11-05` |
+| subject guard | 18-name roster + owner words `用户 / 号主 / …` | pass your own `people` + `EN.ownerWords` |
+| provenance guard | verbatim substring over model numbers / versions | **works**; English preset checks tokens that carry a digit (`H100`, `4090`, `26`, `15.1 TB`) instead of words, because words get paraphrased |
+| builder dates | `2026年11月5日`, `11月5日` | **not done** — the Python builder still parses Chinese dates |
+| rendered block | `【事件档案】` scaffolding, `### date title（N 条事实）` | **not done** — facts and dates are fine, block headers are Chinese |
+| sentence split / folding | `。！？` and colloquial turn boundaries | **not done** — you fold with your own `thread`/`subject` fields |
+
+So: routing, dates-in-questions and both configurable guards travel with you; the builder, the
+block scaffolding and the fold heuristics do not. The full port checklist, the pack interface
+and a worked English example live in [`docs/LANGUAGE.md`](packages/eventfold/docs/LANGUAGE.md);
+the English guards are executable in
+[`packages/fold-guard/test/english.test.mjs`](packages/fold-guard/test/english.test.mjs), and
+English routing in [`packages/eventfold/test/lang_test.mjs`](packages/eventfold/test/lang_test.mjs).
+
+Issues, pull requests and commit messages: Chinese preferred, English accepted.
 
 ## Governance
 

@@ -39,7 +39,36 @@ use(r.doc);
 | `foreignSubjectLines` | drop bullets that name someone else and never mention the owner | the "王五说…" problem: a colleague's story becomes the owner's fact |
 
 Dates (`2026-11-05`) and small ordinals (`3 条`) are exempt by default — they are structure, not
-claims. Every rule is a parameter: `exempt`, `whitelist`, `bullet`, `ownerWords`.
+claims. Every rule is a parameter: `exempt`, `whitelist`, `bullet`, `ownerWords`, `summary`,
+`token`, `labels`.
+
+## Other languages
+
+The defaults are Chinese, but none of the three checks is Chinese by nature — they are three
+parameters you have to fill. An English preset ships with the package:
+
+```js
+import { createGuard, EN } from 'fold-guard';
+
+const guard = createGuard({
+  sections: ['Status'],
+  summary: EN.summary,      // > TL;DR: … / > Summary: …
+  labels: EN.labels,
+  ownerWords: EN.ownerWords, // user / owner / I / me / my
+  token: EN.token,          // only tokens carrying a digit (H100, 26, 15.1 TB)
+  people: ['Marcus'],       // "someone else" in your corpus
+});
+```
+
+Two things to know before you trust it:
+
+- **`token` must change.** The Chinese default treats runs of Latin letters as model numbers,
+  which is right for Chinese prose and wrong for English prose: it would flag every word. The
+  English preset checks numbers, codes and versions only — stricter about digits, looser about
+  nouns (`docs/LANGUAGE.md` in the eventfold package explains the trade-off).
+- **`ownerWords` must change.** With the Chinese default an English line that names a colleague
+  is dropped even when it talks about the owner. That failure mode is a test
+  (`test/english.test.mjs`), not a footnote.
 
 ## Design note: why a token check and not a model check
 

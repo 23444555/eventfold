@@ -1,6 +1,6 @@
 {
   "name": "fold-guard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Three fail-closed checks for LLM-written memory digests: structure, provenance, subject.",
   "type": "module",
   "license": "MIT",

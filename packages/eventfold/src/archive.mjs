@@ -17,6 +17,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { activeLang } from './lang.mjs';
+
+export { getLang, activeLang, LANGS } from './lang.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // 数据位置：显式环境变量 > 同目录 > ../data/。装进插件后数据在 <plugin>/data/archive.json。
@@ -91,12 +94,9 @@ export function seedEventsForTexts(texts) {
 
 /* ---------- 词面相似度：字符 bigram 覆盖率 ---------- */
 
+/** 字符/词元相似度走语言包：中文是字符 bigram，英文是词与词对（见 lang.mjs）。 */
 function bigrams(s) {
-  const t = String(s || '').toLowerCase().replace(/[^0-9a-z\u4e00-\u9fff]+/g, '');
-  if (t.length < 2) return new Set(t ? [t] : []);
-  const out = new Set();
-  for (let i = 0; i < t.length - 1; i++) out.add(t.slice(i, i + 2));
-  return out;
+  return activeLang().grams(s);
 }
 
 function cover(queryGrams, text) {
@@ -117,19 +117,9 @@ function jaccard(a, b) {
   return inter / (a.size + b.size - inter);
 }
 
-const STOP_WORDS = [
-  '什么','怎么','为什么','怎么样','多少','哪些','哪个','哪里','是不是','有没有','能不能','要不要',
-  '一共','总共','到底','究竟','后来','最后','之前','之后','当时','现在','目前','情况','东西','事情','问题',
-  '我们','你们','他们','我的','你的','他的','她的','我','你','他','她','它','这个','那个','这次','那次',
-  '一下','可以','应该','需要','知道','告诉','觉得','还是','就是','然后','如果','因为','所以','但是',
-  '的','了','吗','呢','吧','啊','有','没','是','和','跟','还','就','也','都','很','太','个','次','回','在','说','过',
-]
-
 /** 去掉问句里的口水词，只留「有信息量的部分」；否则「我的猫叫什么」会靠「什么」匹配到一堆无关事件。 */
 function queryOnly(s) {
-  let t = String(s || '');
-  for (const w of STOP_WORDS) t = t.split(w).join(' ');
-  return t;
+  return activeLang().queryOnly(s);
 }
 
 /* ---------- 索引：每个事件一份「路由文本」+ 词面 IDF ---------- */
@@ -241,16 +231,13 @@ export function escalate(verdict, recall) {
 /* ---------- 检索：路由事件 → 铺事实 ---------- */
 
 function dateIn(q) {
-  const m = q.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]/) || q.match(/(?<!\d)(\d{1,2})-(\d{1,2})(?!\d)/);
-  return m ? [Number(m[1]), Number(m[2])] : null;
+  return activeLang().parseDate(q);
 }
 
 /** 路由前把日期从问句里剥掉：日期已经由 dateIn 单独当锚，
  *  留着会生出「26」「1-」这种 bigram，把每件带日期的陈年旧事都算成命中（10 月的发布史就是这样挤进前两名）。 */
 function stripDates(s) {
-  return String(s || '')
-    .replace(/\d{4}[-年/.]\d{1,2}[-月/.]\d{1,2}[日号]?/g, ' ')
-    .replace(/\d{1,2}\s*[-月/]\s*\d{1,2}\s*[日号]?/g, ' ');
+  return activeLang().stripDates(s);
 }
 
 export function routeEvents(query, n, opts = {}) {
@@ -272,7 +259,7 @@ export function routeEvents(query, n, opts = {}) {
     let tokenHit = false;
     if (dm && (it.e.first || it.e.last)) {
       for (const day of [it.e.first, it.e.last]) {
-        const [, mo, da] = (day || '').split('-').map(Number);
+        const [mo, da] = activeLang().dayParts(day);
         if (mo === dm[0] && da === dm[1]) { s += 0.15; dateHit = true; break; }
       }
     }
@@ -293,9 +280,7 @@ export function routeEvents(query, n, opts = {}) {
     // 匹配前先把日期剥掉：否则问句里的「11-26」会去命中每一条槽位里的「2026-11-25」，
     // 所有事件都白拿一份加分（实测把 10 月的发布事件抬到第 3、4 名，吃掉一半预算）。
     const head = `${it.e.title} ${it.e.slots.map((x) => x.v).join(' ')}`.toLowerCase();
-    const headNoDate = head
-      .replace(/\d{4}[-年/.]\d{1,2}[-月/.]\d{1,2}[日号]?/g, ' ')
-      .replace(/\d{1,2}月\d{1,2}[日号]/g, ' ');
+    const headNoDate = stripDates(head);
     const { tokenDf, N: total } = buildIndex();
     for (const tk of tokens) {
       if (tk.length < 2) continue;
@@ -411,10 +396,9 @@ function cleanFact(t) {
 
 /** 去重前先剥掉日期与空白：「张伟为下单失误道歉」和「张伟于2026年10月6日为下单失误道歉」是同一条。 */
 function dedupeKey(t) {
-  return cleanFact(t)
-    .replace(/\d{4}[-年]\d{1,2}[-月]\d{1,2}[日号]?/g, '')
+  return stripDates(cleanFact(t))
     .replace(/\d{1,2}月\d{1,2}[日号]/g, '')
-    .replace(/[\s，。、；：]/g, '');
+    .replace(/[\s，。、；：,.;:]/g, '');
 }
 
 function dedupeFacts(list) {
@@ -441,7 +425,7 @@ function renderEvent(e, query, cap, qg) {
   const want = dateIn(query);
   const onDay = (d) => {
     if (!want || !d) return false;
-    const [, mo, da] = String(d).split('-').map(Number);
+    const [mo, da] = activeLang().dayParts(d);
     return mo === want[0] && da === want[1];
   };
   const lines = [`### ${e.first}${e.last && e.last !== e.first ? '~' + e.last.slice(5) : ''} ${e.title}（${e.n} 条事实）`];
