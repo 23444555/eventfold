@@ -1,0 +1,11 @@
+[
+  { "id": "h1", "topic": "hardware", "question": "我现在用的显卡是什么型号？", "anchors": ["4070 Ti Super"] },
+  { "id": "h2", "topic": "hardware", "question": "机箱现在什么状况？", "anchors": ["静电"] },
+  { "id": "h3", "topic": "hardware", "question": "我租的服务器是什么卡、多大显存？", "anchors": ["A100", "80G"] },
+  { "id": "h4", "topic": "hardware", "question": "我明年打算换什么显卡？", "anchors": ["4090"] },
+  { "id": "m1", "topic": "memory_system", "question": "长短期记忆是怎么分层的？", "anchors": ["上下文", "长期"] },
+  { "id": "m2", "topic": "memory_system", "question": "人格卡从多少字精简到多少字？", "anchors": ["5525", "2186"] },
+  { "id": "m3", "topic": "memory_system", "question": "中文 BM25 为什么关了？", "anchors": ["分词"] },
+  { "id": "m4", "topic": "memory_system", "question": "挂真实 QQ 一周要验收哪几件事？", "anchors": ["消息进场", "不串群"] },
+  { "id": "x1", "topic": "hardware", "question": "李四的静电容键盘花了多少钱？", "anchors": ["档案里没有"] }
+]

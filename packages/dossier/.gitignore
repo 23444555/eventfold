@@ -1,0 +1,5 @@
+node_modules/
+demo/
+dossier.state.json
+bench/last-run.json
+*.log

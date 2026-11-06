@@ -1,0 +1,32 @@
+{
+  "name": "dossier",
+  "version": "0.1.0",
+  "description": "Turn scattered conversation events into per-topic dossiers, then inject only the one that matches (600 chars).",
+  "type": "module",
+  "bin": {
+    "dossier": "src/index.mjs"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test",
+    "bench": "node bench/run.mjs"
+  },
+  "keywords": [
+    "llm",
+    "memory",
+    "prompt",
+    "dossier",
+    "context"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "fold-guard": "file:../fold-guard"
+  }
+}
