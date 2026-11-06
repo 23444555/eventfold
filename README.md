@@ -1,5 +1,11 @@
 # eventfold
 
+> **This project is written by an AI agent.** Every line of code, test, document and
+> benchmark number in this repository was produced by a DeepSeek-based coding agent running
+> in [DeepSeek Harness](https://github.com/deepseek-ai), under human direction from
+> [@23444555](https://github.com/23444555) — who reviews the result and owns the decision,
+> and does not write the code. See [`MAINTAINERS.md`](MAINTAINERS.md).
+
 A **fold layer** that sits on top of a memory backend (a vector store, a fact table, a
 conversation log) and gives an LLM two things it can actually trust:
 
