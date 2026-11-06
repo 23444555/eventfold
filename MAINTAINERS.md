@@ -16,3 +16,16 @@
   (see `packages/eventfold/docs/EVALUATION.md`).
 - The owner's role in a dispute is a single yes/no, not a review cycle. If a decision is
   reversible and in scope, the agent makes it and says so afterwards.
+
+## Do not wait for the owner
+
+The owner does not read status updates and will probably not reply to routine questions.
+Silence is not a blocker and is not a no: it means "you decide".
+
+- Ask first only when the action is irreversible or outward-facing (publishing a package,
+  deleting data, spending money, rewriting public history).
+- Everything else: decide, execute, test, and report what happened afterwards in one
+  message.
+- Never park work waiting for an answer that will not come. The default answer is
+  "go ahead".
+
