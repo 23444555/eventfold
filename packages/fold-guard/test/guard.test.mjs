@@ -5,7 +5,7 @@ import { createGuard, DEFAULT_EXEMPT } from '../src/index.mjs';
 
 const guard = createGuard({
   sections: ['当前状态', '时间线', '待跟进', '已变化'],
-  people: ['李总', '王工', '老周'],
+  people: ['李四', '王工', '王五'],
 });
 
 const doc = (body) => `# 硬件与工位
@@ -67,10 +67,10 @@ test('provenance: offending bullets are dropped, prose is kept', () => {
 });
 
 test('subject: a bullet about someone else is dropped', () => {
-  const text = doc('- 李总把显卡换成了 4090\n- 用户自己用的是 4070 Ti Super');
+  const text = doc('- 李四把显卡换成了 4090\n- 用户自己用的是 4070 Ti Super');
   const lines = guard.foreignSubjectLines(text);
   assert.equal(lines.length, 1);
-  assert.ok(lines[0].includes('李总'));
+  assert.ok(lines[0].includes('李四'));
 });
 
 test('subject: mentioning someone is fine when the owner is the subject', () => {
@@ -79,13 +79,13 @@ test('subject: mentioning someone is fine when the owner is the subject', () => 
 });
 
 test('run: reports both strips and the structure verdict', () => {
-  const text = doc('- 显卡是 4090\n- 李总把显示器换成了艺卓');
+  const text = doc('- 显卡是 4090\n- 李四把显示器换成了艺卓');
   const r = guard.run({ text, material: '显卡是 4070 Ti Super' });
   assert.equal(r.ok, true);
   assert.equal(r.removedTrace, 1);
   assert.equal(r.removedSubject, 1);
   assert.ok(!r.doc.includes('4090'));
-  assert.ok(!r.doc.includes('李总'));
+  assert.ok(!r.doc.includes('李四'));
 });
 
 test('exempt list is exported so callers can extend it', () => {

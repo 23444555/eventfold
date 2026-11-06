@@ -42,7 +42,7 @@ print(f"\n错答案里：模型带不确定词 {n_ans}/{len(wrong)}｜金标带�
 print("\n带数字的事实里，同一句主语的取值冲突（粗查）：")
 by_subj = {}
 for i, t in facts.items():
-    m = re.search(r"^(老周|李四|王五|张三|肥鱼|张伟|主理人)", t)
+    m = re.search(r"^(王五|李四|王五|张三|肥鱼|张伟|主理人)", t)
     if not m:
         continue
     nums = re.findall(r"\d+(?:\.\d+)?", t)

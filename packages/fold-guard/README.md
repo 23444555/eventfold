@@ -20,7 +20,7 @@ import { createGuard } from 'fold-guard';
 
 const guard = createGuard({
   sections: ['当前状态', '时间线', '待跟进'],
-  people: ['李总', '王工'],          // names that are "someone else"
+  people: ['李四', '王工'],          // names that are "someone else"
 });
 
 const r = guard.run({ text, material });
@@ -36,7 +36,7 @@ use(r.doc);
 | `checkStructure` | required headings and a `> 一句话：` line are present | the injector keys on them; a missing one means the block is empty and nobody notices |
 | `untraceable` | every number / model name / version token appears **verbatim** in the material | the cheapest fabrication detector there is |
 | `stripGuardLines` | drop bullets that carry an untraceable token | keeps the prose, loses the lie |
-| `foreignSubjectLines` | drop bullets that name someone else and never mention the owner | the "老周说…" problem: a colleague's story becomes the owner's fact |
+| `foreignSubjectLines` | drop bullets that name someone else and never mention the owner | the "王五说…" problem: a colleague's story becomes the owner's fact |
 
 Dates (`2026-11-05`) and small ordinals (`3 条`) are exempt by default — they are structure, not
 claims. Every rule is a parameter: `exempt`, `whitelist`, `bullet`, `ownerWords`.
@@ -45,7 +45,7 @@ claims. Every rule is a parameter: `exempt`, `whitelist`, `bullet`, `ownerWords`
 
 A second model call to verify the first one doubles cost and adds its own failure mode. A substring
 check cannot be talked out of a number. It does have a known blind spot — it cannot catch a claim
-that is composed entirely of words present in the material ("老周 says the disk is fine" when老周
+that is composed entirely of words present in the material ("王五 says the disk is fine" when王五
 said no such thing). That is what the subject check is for, and why the two run together.
 
 ## Used by

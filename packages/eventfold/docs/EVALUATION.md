@@ -12,7 +12,7 @@ that the mechanism works on questions of a particular shape; it is not evidence 
 
 ## Corpus
 
-A fictional homelab operator ("老周") maintaining a home network, a backup array, a rack, a UPS and a
+A fictional homelab operator ("王五") maintaining a home network, a backup array, a rack, a UPS and a
 few containerised services over roughly four months. 1,067 facts, exported as episodes:
 
 | | |
@@ -664,7 +664,7 @@ right and the gold is the stale one.**
 | gold/answer both in the block, question does not say before or after the change | 7 | 阈值 0.8 → 0.5 on 11-20; the gold quotes the 0.8 complaint, the model answers the 0.5 the same day's fact states |
 | paraphrase dropped the subject, so the question is ambiguous | 3 | "那个法子里的失效时长" → 黑名单缓存 3600 (11-02) vs 网关 TTL 86400 (11-20); gold picks one, model picks the other |
 | gold is a fragment with no answer in it | 4 | `开个复盘会` / `这十二天` as gold for "哪一天 / 多少天" |
-| genuine model errors | 5 | 4 of them are the same failure: it takes `21:40 老周喊话追责` as the recovery time and answers "40 分钟" when the block says `21:20 回滚、21:35 恢复`; 1 is an alias mix-up (王五 vs 李四) |
+| genuine model errors | 5 | 4 of them are the same failure: it takes `21:40 王五喊话追责` as the recovery time and answers "40 分钟" when the block says `21:20 回滚、21:35 恢复`; 1 is an alias mix-up (王五 vs 李四) |
 
 Two readings, and the second is the useful one.
 
@@ -689,9 +689,9 @@ no line:
 
 ```
 【同日时间线（按块内提及的日期与时刻排，未改动材料）】
-- 11-05：21:15 老周：命令张伟立刻回滚限流配置 ｜ 21:25 回滚完成、网关重启完毕
-- 11-08：21:15 老周：下令立刻回滚 ｜ 21:20 肥鱼：执行 git revert ｜ 21:35 系统重启完毕，连接池恢复正常
-- 11-11：09:55 老周：下令肥鱼立刻回滚 ｜ 10:00 肥鱼：执行 git revert ｜ 10:45 一次故障持续约四十分钟
+- 11-05：21:15 王五：命令张伟立刻回滚限流配置 ｜ 21:25 回滚完成、网关重启完毕
+- 11-08：21:15 王五：下令立刻回滚 ｜ 21:20 肥鱼：执行 git revert ｜ 21:35 系统重启完毕，连接池恢复正常
+- 11-11：09:55 王五：下令肥鱼立刻回滚 ｜ 10:00 肥鱼：执行 git revert ｜ 10:45 一次故障持续约四十分钟
 ```
 
 34 instances (the 4 targets + 30 previously-correct controls), same arm, same contract (bestguess),

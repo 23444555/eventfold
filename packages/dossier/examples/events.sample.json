@@ -44,7 +44,7 @@
     "date": "2026-10-26",
     "schema": "purchase-hardware",
     "subject": "显卡",
-    "summary": "张伟上周换了 4090，跑分比之前高 40%，李总批的预算。",
+    "summary": "张伟上周换了 4090，跑分比之前高 40%，李四批的预算。",
     "source": "chat"
   },
   {
@@ -52,7 +52,7 @@
     "date": "2026-10-27",
     "schema": "config-change",
     "subject": "缓存 TTL",
-    "summary": "老周把网关缓存 TTL 从 600 调到 3600，说压测通过后再上线。",
+    "summary": "王五把网关缓存 TTL 从 600 调到 3600，说压测通过后再上线。",
     "source": "chat"
   },
   {
