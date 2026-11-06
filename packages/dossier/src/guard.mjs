@@ -7,9 +7,10 @@ import { createGuard, DEFAULT_EXEMPT, DEFAULT_OWNER_WORDS } from 'fold-guard';
 export const SECTIONS = ['当前状态', '时间线', '待跟进', '已变化'];
 
 // People who appear in group chats but are not the owner. Extend for your data.
+// Placeholder names on purpose: this file ships publicly.
 export const OTHER_PEOPLE = [
-  '李总', '张伟', '李四', '赵敏', '周杰', '王工', '老周', '张三', '王五',
-  '郑凯', '张伟明', '小鹿', '阿茶', '唐果', '老吴', '小胖', '小陈', '老李',
+  '张三', '李四', '王五', '赵六', '孙七', '周八', '吴九', '郑十',
+  '张伟', '李娜', '王强', '刘洋',
 ];
 
 const guard = createGuard({ sections: SECTIONS, people: OTHER_PEOPLE });

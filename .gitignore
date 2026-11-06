@@ -1,0 +1,12 @@
+node_modules/
+package-lock.json.bak
+__pycache__/
+*.pyc
+.DS_Store
+*.log
+
+# generated archives and exports (they contain real conversation data)
+packages/eventfold/examples/data/
+packages/eventfold/bench/ab-cap-blocks*.json
+packages/eventfold/bench/ab-gen*.json
+packages/dossier/demo/*.json

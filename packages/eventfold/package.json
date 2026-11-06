@@ -11,10 +11,16 @@
   "files": [
     "src/",
     "build/",
-    "bench/",
-    "examples/",
-    "docs/"
+    "docs/",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OWNER/eventfold.git",
+    "directory": "packages/eventfold"
+  },
   "engines": {
     "node": ">=18"
   },

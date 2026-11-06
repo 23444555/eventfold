@@ -1,0 +1,26 @@
+{
+  "name": "eventfold-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A fold layer over a memory backend: eventfold (runtime + builder), fold-guard (guards), dossier (topic dossiers).",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "npm run test -w fold-guard && npm run test -w dossier && npm run test:runtime -w eventfold",
+    "test:build": "npm run test:build -w eventfold",
+    "lint": "node --check packages/fold-guard/src/index.mjs && node --check packages/dossier/src/index.mjs && node --check packages/eventfold/src/archive.mjs"
+  },
+  "keywords": [
+    "memory",
+    "episodic-memory",
+    "llm",
+    "rag",
+    "long-term-memory"
+  ]
+}
