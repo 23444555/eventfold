@@ -99,6 +99,12 @@ The Python builder (`packages/eventfold/build/`) does four deterministic passes 
 group, fold, split, emit — and never calls an LLM. The runtime is one file,
 `packages/eventfold/src/archive.mjs`.
 
+## Governance
+
+The owner is hands-off: direction and final accept/reject only, no day-to-day work.
+Implementation and triage are done by an AI agent under a standing instruction to decide,
+execute and report. See [`MAINTAINERS.md`](MAINTAINERS.md).
+
 ## License
 
 MIT. See each package's `LICENSE`.
