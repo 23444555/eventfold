@@ -26,11 +26,6 @@
     "context"
   ],
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/OWNER/eventfold.git",
-    "directory": "packages/dossier"
-  },
   "dependencies": {
     "fold-guard": "^0.1.0"
   }
