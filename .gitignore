@@ -10,3 +10,5 @@ packages/eventfold/examples/data/
 packages/eventfold/bench/ab-cap-blocks*.json
 packages/eventfold/bench/ab-gen*.json
 packages/dossier/demo/*.json
+packages/eventfold/bench/*.json
+
