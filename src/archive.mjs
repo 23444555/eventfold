@@ -34,6 +34,61 @@ function load() {
   return DATA;
 }
 
+/* ---------- 事实原文 → 事件 id：给「向量召回点名」用 ---------- */
+
+/** 归一化：去空白与标点、转小写；`| When: …` 这类后缀先切掉（召回侧不带它）。 */
+function normFact(s) {
+  return String(s || '')
+    .split(' | When:')[0]
+    .split(' | Involving:')[0]
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[，。；：、！？,.;:!?"'“”‘’（）()\[\]【】`~\-—…]/g, '');
+}
+
+let TEXT_INDEX = null;
+
+/** 事实原文前缀 → 事件 id。首次调用建一次，之后常驻内存（档案是静态 JSON）。 */
+function textIndex() {
+  if (TEXT_INDEX) return TEXT_INDEX;
+  TEXT_INDEX = new Map();
+  for (const e of load().events || []) {
+    for (const f of e.facts || []) {
+      const key = normFact(f.t).slice(0, 40);
+      if (key && !TEXT_INDEX.has(key)) TEXT_INDEX.set(key, String(e.id));
+    }
+  }
+  return TEXT_INDEX;
+}
+
+/**
+ * 召回命中事实的原文 → 所属事件 id 列表（去重、保持顺序、找不到就丢）。
+ * 精确前缀对不上时退回字面相似度（召回侧偶尔会把两句话并成一条），阈值放高只做兜底。
+ */
+export function seedEventsForTexts(texts) {
+  const idx = textIndex();
+  const list = idx.size ? [...idx.keys()] : [];
+  const out = [];
+  for (const t of texts || []) {
+    const n = normFact(t);
+    if (!n) continue;
+    let id = idx.get(n.slice(0, 40));
+    if (!id && list.length) {
+      const qg = bigrams(n);
+      let best = 0;
+      for (const k of list) {
+        const s = cover(qg, k);
+        if (s >= 0.8 && s > best) {
+          best = s;
+          id = idx.get(k);
+        }
+      }
+    }
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
 /* ---------- 词面相似度：字符 bigram 覆盖率 ---------- */
 
 function bigrams(s) {

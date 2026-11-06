@@ -54,6 +54,13 @@ SYS_BESTGUESS = ("你在读一份带编号的记忆材料，每行形如 [F1234]
                  "都照答；只有当材料里完全没有相关句子时才回「不知道」。")
 SYS = SYS_STRICT
 
+# 用户提案的读侧契约：不确定就说出来，不要改成「不知道」；这样写侧才有「带不确定词 → 不入库」的抓手
+SYS_HEDGE = ("你在读一份带编号的记忆材料，每行形如 [F1234] 内容。只根据材料回答，不超过 20 字。"
+             "材料里的句子可能没有直接写出答案，能推、能算、能比对就作答。"
+             "如果你自己觉得不够确定，就在答案里带上一个不确定的说法（例如「可能」「大概」「印象里」「估计」），"
+             "不要因此改答「不知道」；只有材料里完全没有相关句子时才回「不知道」。")
+HEDGE = re.compile(r"可能|大概|印象里|估计|好像|似乎|猜测|或许|也许|不确定|应该是|差不多")
+
 CITE_RE = re.compile(r"(?:依据|来源|出处)\s*[:：]?\s*((?:F\d+[\s,，、]*)+)", re.I)
 BARE_CITE_RE = re.compile(r"^[\s\-—:：]*((?:F\d+[\s,，、]*)+)$", re.I)
 ABSTAIN = re.compile(r"不知道|无法确定|没有相关|材料中没有|没提到|信息不足")
@@ -143,7 +150,7 @@ def main():
     ap.add_argument("--conc", type=int, default=12)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--close", default="strict", choices=["strict", "loose", "none", "free", "soft",
-                                                         "derive", "bestguess"],
+                                                         "derive", "bestguess", "hedge"],
                     help="收口方式：strict=「依据 F1,F2」最多 3 条；loose=末行只写编号；free=强制说依据但自由措辞；"
                          "soft=可提可不提；none=不提引用")
     args = ap.parse_args()
@@ -151,7 +158,7 @@ def main():
     global SYS
     SYS = {"strict": SYS_STRICT, "loose": SYS_LOOSE, "none": SYS_NONE,
            "free": SYS_FREE, "soft": SYS_SOFT,
-           "derive": SYS_DERIVE, "bestguess": SYS_BESTGUESS}[args.close]
+           "derive": SYS_DERIVE, "bestguess": SYS_BESTGUESS, "hedge": SYS_HEDGE}[args.close]
     key = load_key()
     gen = json.load(open(args.gen, encoding="utf-8"))
     blocks = json.load(open(args.blocks, encoding="utf-8"))
